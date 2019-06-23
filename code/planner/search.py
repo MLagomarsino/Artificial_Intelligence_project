@@ -13,7 +13,6 @@ class Search():
 class LinearSearch(Search):
 
     def do_search(self):
-
         # Override initial horizon (M: estimate the number of actions to reach the goal)
         # self.horizon = 1
 
@@ -26,7 +25,6 @@ class LinearSearch(Search):
             # M: check preconditions of our task match the ones of given action
             # the effect matches the goal?
             # if yes -> self.found = True and return plan
-
             # if no -> update the preconditions
 
             print(self.encoder.actions[0].name)
