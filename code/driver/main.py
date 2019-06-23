@@ -13,10 +13,10 @@ val_path = '/bin/validate'
 
 def main(BASE_DIR):
 
-    ## Parse planner args
+    # Parse planner args
     args = arguments.parse_args()
 
-    ## Run PDDL translator (from TFD)
+    # Run PDDL translator (from TFD)
     prb = args.problem
     if args.domain:
         domain = args.domain
@@ -26,9 +26,9 @@ def main(BASE_DIR):
         domain = utils.getDomainName(prb)
 
 
-    ## Compute initial horizon estimate
-    ## querying a satisficing planner
-    ## here: ENHSP by Enrico Scala
+    # Compute initial horizon estimate
+    # querying a satisficing planner
+    # here: ENHSP by Enrico Scala
 
     hplan = BASE_DIR+'/enhsp/enhsp'
     val = BASE_DIR+'/bin/validate'
@@ -61,7 +61,7 @@ def main(BASE_DIR):
     ## according to user flags
 
     e = encoder.EncoderSAT(task, modifier.LinearModifier())
-    s = search.LinearSearch(e,initial_horizon)
+    s = search.LinearSearch(e, initial_horizon)
     plan = s.do_search()
 
     ## VALidate and print plan
