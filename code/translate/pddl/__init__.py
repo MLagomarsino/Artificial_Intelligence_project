@@ -39,4 +39,3 @@ from f_expression import NumericConstant
 from f_expression import PrimitiveNumericExpression
 
 from effects import Effect
-

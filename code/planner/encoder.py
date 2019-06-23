@@ -1,10 +1,11 @@
 import translate.pddl as pddl
 import utils
-## import formula ## MARTA
+# import formula ## MARTA
 from translate import instantiate
 from translate import numeric_axiom_rules
 from collections import defaultdict
 import numpy as np
+
 
 class Encoder():
 
@@ -33,8 +34,8 @@ class Encoder():
         """
 
         (relaxed_reachable, boolean_fluents, numeric_fluents, actions,
-        durative_actions, axioms, numeric_axioms,
-        reachable_action_params) = instantiate.explore(self.task)
+         durative_actions, axioms, numeric_axioms,
+         reachable_action_params) = instantiate.explore(self.task)
 
         return boolean_fluents, actions, numeric_fluents, axioms, numeric_axioms
 
@@ -55,10 +56,9 @@ class Encoder():
             for part in nax.parts:
                 depends_on[nax].append(part)
 
-        axioms_by_layer, _,_,_ = numeric_axiom_rules.handle_axioms(self.numeric_axioms)
+        axioms_by_layer, _, _, _ = numeric_axiom_rules.handle_axioms(self.numeric_axioms)
 
         return axioms_by_name, depends_on, axioms_by_layer
-
 
     def computeMutexes(self):
         """
@@ -74,21 +74,18 @@ class Encoder():
 
         return mutexes
 
-
     def createVariables(self):
-        ### Create boolean variables for boolean fluents ###
+        # Create boolean variables for boolean fluents
         self.boolean_variables = defaultdict(dict)
-        for step in range(self.horizon+1):
+        for step in range(self.horizon + 1):
             for fluent in self.boolean_fluents:
                 pass
 
-
-        ### Create propositional variables for actions ids ###
+        # Create propositional variables for actions ids
         self.action_variables = defaultdict(dict)
         for step in range(self.horizon):
             for a in self.actions:
                 pass
-
 
     def encodeInitialState(self):
         """
@@ -107,16 +104,14 @@ class Encoder():
             else:
                 raise Exception('Initial condition \'{}\': type \'{}\' not recognized'.format(fact, type(fact)))
 
-
-        ## Close-world assumption: if fluent is not asserted
-        ## in init formula then it must be set to false.
+        # Close-world assumption: if fluent is not asserted
+        # in init formula then it must be set to false.
 
         for variable in self.boolean_variables.values():
             if not variable in initial:
                 pass
 
         return initial
-
 
     def encodeGoalState(self):
         """
@@ -134,29 +129,26 @@ class Encoder():
             if goal is None:
                 goal = self.task.goal
 
-
-            ## Check if goal is just a single atom
+            # Check if goal is just a single atom
             if isinstance(goal, pddl.conditions.Atom):
                 if not goal.predicate in axiom_names:
                     pass
 
-            ## Check if goal is a conjunction
-            elif isinstance(goal,pddl.conditions.Conjunction):
+            # Check if goal is a conjunction
+            elif isinstance(goal, pddl.conditions.Conjunction):
                 for fact in goal.parts:
                     pass
 
             else:
-                raise Exception('Propositional goal condition \'{}\': type \'{}\' not recognized'.format(goal, type(goal)))
+                raise Exception(
+                    'Propositional goal condition \'{}\': type \'{}\' not recognized'.format(goal, type(goal)))
 
             return propositional_subgoal
-
-
 
         propositional_subgoal = encodePropositionalGoals()
         goal = And(propositional_subgoal)
 
         return goal
-
 
     def encodeActions(self):
         """
@@ -170,19 +162,17 @@ class Encoder():
         for step in range(self.horizon):
             for action in self.actions:
 
-                ## Encode preconditions
+                # Encode preconditions
                 for pre in action.condition:
                     pass
 
-                ## Encode add effects (conditional supported)
+                # Encode add effects (conditional supported)
                 for add in action.add_effects:
                     pass
 
-
-                ## Encode delete effects (conditional supported)
+                # Encode delete effects (conditional supported)
                 for de in action.del_effects:
                     pass
-
 
         return actions
 
@@ -194,12 +184,11 @@ class Encoder():
         frame = []
 
         for step in range(self.horizon):
-            ## Encode frame axioms for boolean fluents
+            # Encode frame axioms for boolean fluents
             for fluent in self.boolean_fluents:
                 pass
 
         return frame
-
 
     def encodeExecutionSemantics(self):
 
@@ -207,7 +196,6 @@ class Encoder():
             return self.modifier.do_encode(self.action_variables, self.horizon)
         except:
             return self.modifier.do_encode(self.action_variables, self.mutexes, self.horizon)
-
 
     def encodeAtLeastOne(self):
 
@@ -218,11 +206,7 @@ class Encoder():
 
         return atleastone
 
-
-
-
-
-    def encode(self,horizon):
+    def encode(self, horizon):
         """
         Basic routine for bounded encoding:
         encodes initial, transition,goal conditions
@@ -236,40 +220,40 @@ class Encoder():
         print('Dumping encoding')
         raise Exception('Not implemented yet')
 
+
 class EncoderSAT(Encoder):
 
-    def encode(self,horizon):
-
+    def encode(self, horizon):
         self.horizon = horizon
 
-        ## Create variables
+        # Create variables
         self.createVariables()
 
-        ### Start encoding formula ###
+        # Start encoding formula
 
         formula = defaultdict(list)
 
-        ## Encode initial state axioms
+        # Encode initial state axioms
 
         formula['initial'] = self.encodeInitialState()
 
-        ## Encode goal state axioms
+        # Encode goal state axioms
 
         formula['goal'] = self.encodeGoalState()
 
-        ## Encode universal axioms
+        # Encode universal axioms
 
         formula['actions'] = self.encodeActions()
 
-        ## Encode explanatory frame axioms
+        # Encode explanatory frame axioms
 
         formula['frame'] = self.encodeFrame()
 
-        ## Encode execution semantics (lin/par)
+        # Encode execution semantics (lin/par)
 
         formula['sem'] = self.encodeExecutionSemantics()
 
-        ## Encode at least one axioms
+        # Encode at least one axioms
 
         formula['alo'] = self.encodeAtLeastOne()
 

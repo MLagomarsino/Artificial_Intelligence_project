@@ -1,8 +1,8 @@
 import argparse
 import os
 
-
 DESCRIPTION = """Planner driver script."""
+
 
 def is_valid_file(arg):
     if not os.path.exists(arg):
@@ -14,13 +14,11 @@ def is_valid_file(arg):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description = DESCRIPTION)
+    parser = argparse.ArgumentParser(description=DESCRIPTION)
 
     parser.add_argument('problem', metavar='problem.pddl', help='Path to PDDL problem file', type=is_valid_file)
 
-    ########################
-    ## Optional arguments ##
-    ########################
+    # Optional arguments
 
     parser.add_argument('-domain', help='Path to PDDL domain file', type=is_valid_file)
 

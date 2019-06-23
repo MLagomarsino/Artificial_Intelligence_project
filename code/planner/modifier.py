@@ -1,7 +1,8 @@
 class Modifier():
-    
+
     def do_encode(self):
         pass
+
 
 class LinearModifier(Modifier):
 
@@ -9,13 +10,6 @@ class LinearModifier(Modifier):
         c = []
 
         for step in range(bound):
-           pass
-        
+            pass
+
         return c
-
-
-        
-        
-    
-    
-    
