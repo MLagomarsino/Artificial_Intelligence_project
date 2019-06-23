@@ -79,6 +79,6 @@ def main(BASE_DIR):
         sys.exit()
 
 if __name__ == '__main__':
-    main()
-    ## BASE_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-    ## main(BASE_DIR)
+    ## main()
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    main(BASE_DIR)
