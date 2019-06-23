@@ -213,7 +213,6 @@ class Encoder():
         together with frame and exclusiveness/mutexes axioms
 
         """
-
         pass
 
     def dump(self):
