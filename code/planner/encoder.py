@@ -1,6 +1,7 @@
+# encoding: utf-8
 import translate.pddl as pddl
 import utils
-# import formula ## MARTA
+from formula import FormulaMgr
 from translate import instantiate
 from translate import numeric_axiom_rules
 from collections import defaultdict
@@ -11,19 +12,29 @@ class Encoder():
 
     def __init__(self, task, modifier):
         self.task = task
-        self.modifier = modifier
+        self.modifier = modifier # genera assiomi (linear (1 azione per volta -> serie) e parallel (+ azioni non in conflitto))
 
+        # grounding (all combinations of params) -> fare per ogni istante
         (self.boolean_fluents,
          self.actions,
          self.numeric_fluents,
          self.axioms,
          self.numeric_axioms) = self.ground()
 
+        # don't touch
         (self.axioms_by_name,
          self.depends_on,
          self.axioms_by_layer) = self.sort_axioms()
 
+        # attention to conflictable actions (per linear non serve modificare!!)
         self.mutexes = self.computeMutexes()
+
+        # Add formula mgr
+        self.formula_mgr = FormulaMgr()
+
+        # TODO delete!
+        self.horizon = 2
+        self.createVariables()
 
     def ground(self):
         """
@@ -51,6 +62,7 @@ class Encoder():
         for nax in self.numeric_axioms:
             axioms_by_name[nax.effect] = nax
 
+        # special dictionary that returns an empty list if the key doesn't exist
         depends_on = defaultdict(list)
         for nax in self.numeric_axioms:
             for part in nax.parts:
@@ -75,17 +87,44 @@ class Encoder():
         return mutexes
 
     def createVariables(self):
+        # First step of translation: FOL -> PL
+
+        # associate to each action or fluent an identifier (called counter)
+        # store the mappings in a appropriate structure
+
+        # creo un dizionario di diz : 1 livello = step, 2 livello = azione o fluente
+        # valore coppia di chiavi (dei due livelli) e' un numero (unico, per configurazione)
+        # se a e' dizionario
+        # a[0]["pickup a"]
+
+        # unique counter to identify fluents and actions
+        counter = 1
+        # Inverse mapping: create a (unique) list to store associations
+        self.inverse = [None] # first element of the list is none
+
         # Create boolean variables for boolean fluents
         self.boolean_variables = defaultdict(dict)
+        # a dictionary of 2 levels is created:
+        #   level1 = steps ; level2 = fluents
         for step in range(self.horizon + 1):
             for fluent in self.boolean_fluents:
-                pass
+                # Direct mapping: assign variable and increment the counter to obtain a unique identifier
+                self.boolean_variables[step][str(fluent)] = counter
+                counter += 1
+                # Inverse mapping: append couple (fluent, step)
+                self.inverse.append((str(fluent), step))
 
         # Create propositional variables for actions ids
         self.action_variables = defaultdict(dict)
+        # a dictionary of 2 levels is created:
+        #   level1 = steps ; level2 = actions
         for step in range(self.horizon):
             for a in self.actions:
-                pass
+                # Direct mapping
+                self.action_variables[step][str(a)] = counter
+                counter += 1
+                # Inverse mapping: append couple (action, step)
+                self.inverse.append((str(a), step))
 
     def encodeInitialState(self):
         """
@@ -213,7 +252,45 @@ class Encoder():
         together with frame and exclusiveness/mutexes axioms
 
         """
-        pass
+        self.horizon = horizon
+
+        # Create variables
+        self.createVariables()
+
+        # Start encoding formula
+
+        formula = defaultdict(list)
+
+        # Encode initial state axioms
+
+        formula['initial'] = self.encodeInitialState()
+
+        # Encode goal state axioms
+
+        formula['goal'] = self.encodeGoalState()
+
+        # Encode universal axioms
+
+        formula['actions'] = self.encodeActions()
+
+        # Encode explanatory frame axioms
+
+        formula['frame'] = self.encodeFrame()
+
+        # Encode execution semantics (lin/par)
+
+        formula['sem'] = self.encodeExecutionSemantics()
+
+        # Encode at least one axioms
+
+        formula['alo'] = self.encodeAtLeastOne()
+
+        # mettere tutto in AND (devono essere tutte vere)
+        # chiamo formula manager dentro formula
+        # M: ciclo su tutta lista formula
+        # mkAnd
+
+        return formula
 
     def dump(self):
         print('Dumping encoding')
@@ -255,5 +332,8 @@ class EncoderSAT(Encoder):
         # Encode at least one axioms
 
         formula['alo'] = self.encodeAtLeastOne()
+
+        # mettere tutto in AND (devono essere tutte vere)
+        # chiamo formula manager dentro formula
 
         return formula

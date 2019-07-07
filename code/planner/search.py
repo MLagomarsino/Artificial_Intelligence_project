@@ -1,7 +1,7 @@
 from planner import plan
 from planner import encoder
 import utils
-
+from encoder import Encoder
 
 class Search():
     def __init__(self, encoder, initial_horizon):
@@ -18,17 +18,28 @@ class LinearSearch(Search):
 
         print('Start linear search')
         # Implement linear search here and return a plan
-        # M: initialize plan
 
         while not self.found:
 
-            # M: check preconditions of our task match the ones of given action
-            # the effect matches the goal?
-            # if yes -> self.found = True and return plan
-            # if no -> update the preconditions
+            # chiama metodo encode di encoder passando un orizzonte
+            # ottengo la formula booleana
+            planning_formula = Encoder.encode(self.horizon)
+
+            # risolverla -> importa CDCL o altro solver e provare a fargliela risolvere
+            # se ho un assegnamento (esiste sol)
+
+            # esco dal ciclo
+            # self.found = True
+
+            # faccio traduzione inversa
+            # a un numero corrisponde azione a certo step
+
+
+            # incremento horizon
+            self.horizon += 1
 
             print(self.encoder.actions[0].name)
-            pass
+            # pass
 
         # Must return a plan object
         # when plan is found

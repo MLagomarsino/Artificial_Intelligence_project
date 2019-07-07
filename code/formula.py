@@ -96,21 +96,21 @@ class FormulaMgr:
     # or reduce its reference count
     def dispose(self, node):
         if node.refcount > 1:
+            node.refcount -= 1
+        else:
             # Reduce the reference count of the children (if any)
             if node.left is not None:
-                node.left.refcount -= 1
+                self.dispose(node.left)
             if node.right is not None:
-                node.right.refcount -= 1
+                self.dispose(node.right)
             # If the node has a label, remove it from the index
             if node.label is not None:
                 self.name2id.pop(node.label)
             # Remove the node from all other indexes
             self.node2id.pop(node)
             self.id2node[node.id] = None
-            # The id can be recycled 
+            # The id can be recycled
             self.recycleIds.append(node.id)
-        else:
-            node.refcount -= 1
     
     # Make a variable. The id is assigned by the manager, the
     # label can be chosen by the user. The label must be unique
