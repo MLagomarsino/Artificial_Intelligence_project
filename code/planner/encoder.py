@@ -12,7 +12,7 @@ class Encoder():
 
     def __init__(self, task, modifier):
         self.task = task
-        self.modifier = modifier # genera assiomi (linear (1 azione per volta -> serie) e parallel (+ azioni non in conflitto))
+        self.modifier = modifier  # genera assiomi (linear (1 azione per volta -> serie) e parallel (+ azioni non in conflitto))
 
         # grounding (all combinations of params) -> fare per ogni istante
         (self.boolean_fluents,
@@ -100,7 +100,7 @@ class Encoder():
         # unique counter to identify fluents and actions
         counter = 1
         # Inverse mapping: create a (unique) list to store associations
-        self.inverse = [None] # first element of the list is none
+        self.inverse = [None]  # first element of the list is none
 
         # Create boolean variables for boolean fluents
         self.boolean_variables = defaultdict(dict)
