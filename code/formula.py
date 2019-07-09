@@ -65,7 +65,7 @@ class Node:
         if self.op is None:
             print("v" + str(self.id)),
         else:
-            print("(", self.op.name + get_id(self.id, print_id), " "),
+            print("(", self.op + get_id(self.id, print_id), " "), # delete self.op.name
             if self.left is not None:
                 self.left.do_print(print_id)
             print(" ")

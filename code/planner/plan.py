@@ -1,6 +1,6 @@
 import utils
 import subprocess
-
+from CDCL_solver.dpll import Solver
 
 class Plan():
     def __init__(self, model, encoder):
@@ -12,6 +12,7 @@ class Plan():
         """
 
         # extract plan for model
+        plan = model.extract_assignment()
 
         return plan
 
