@@ -1,3 +1,5 @@
+from encoder import Encoder
+
 class Modifier():
 
     def do_encode(self):

@@ -57,7 +57,7 @@ def main(BASE_DIR):
         sys.exit()
 
     # Compose encoder and search according to user flags
-    e = encoder.EncoderSAT(task, modifier.LinearModifier())
+    e = encoder.Encoder(task, modifier.LinearModifier())
     s = search.LinearSearch(e, initial_horizon)
     plan = s.do_search()
 

@@ -1,7 +1,7 @@
 # encoding: utf-8
 import translate.pddl as pddl
 import utils
-from formula import FormulaMgr
+from formula import FormulaMgr, Node
 from translate import instantiate
 from translate import numeric_axiom_rules
 from collections import defaultdict
@@ -31,10 +31,6 @@ class Encoder():
 
         # Add formula mgr
         self.formula_mgr = FormulaMgr()
-
-        # TODO delete!
-        self.horizon = 2
-        self.createVariables()
 
     def ground(self):
         """
@@ -87,7 +83,7 @@ class Encoder():
         return mutexes
 
     def createVariables(self):
-        # First step of translation: FOL -> PL
+        # First step of translation: FOL -> PL (Grounding)
 
         # associate to each action or fluent an identifier (called counter)
         # store the mappings in a appropriate structure
@@ -171,12 +167,12 @@ class Encoder():
             # Check if goal is just a single atom
             if isinstance(goal, pddl.conditions.Atom):
                 if not goal.predicate in axiom_names:
-                    pass
+                    propositional_subgoal.append(goal) # M
 
             # Check if goal is a conjunction
             elif isinstance(goal, pddl.conditions.Conjunction):
                 for fact in goal.parts:
-                    pass
+                    propositional_subgoal.append(fact)
 
             else:
                 raise Exception(
@@ -184,8 +180,23 @@ class Encoder():
 
             return propositional_subgoal
 
+
         propositional_subgoal = encodePropositionalGoals()
-        goal = And(propositional_subgoal)
+
+        # M
+
+        mgr = FormulaMgr()
+
+        # Check if goal is just a single atom
+        if len(propositional_subgoal) == 1:
+            goal = Node(propositional_subgoal)
+        else:
+            # Check if goal is a conjunction
+            goal = Node(propositional_subgoal[0])
+
+            for i in range(1, len(propositional_subgoal)):
+                # put all subgoals in AND
+                goal = mgr.mkAnd(goal, Node(propositional_subgoal[i]))
 
         return goal
 
@@ -195,23 +206,33 @@ class Encoder():
         each action variable implies its preconditions
         and effects
         """
-
+        mgr = FormulaMgr()
         actions = []
+        #actions.append(Node(1))
+        preconditions = []
+        #preconditions.append(Node(1))
+        effects = []
 
+        effects.append(None)
         for step in range(self.horizon):
+
             for action in self.actions:
 
                 # Encode preconditions
-                for pre in action.condition:
-                    pass
+                preconditions.append(Node(action.condition[0]))
+                for pre in range(1, len(action.condition)-1):
+                    preconditions[step] = mgr.mkAnd(preconditions[step], Node(action.condition[pre]))
 
                 # Encode add effects (conditional supported)
-                for add in action.add_effects:
-                    pass
+                effects.append(Node(action.add_effects[0][1]))
+                for add in range(1, len(action.add_effects)): #for add in action.add_effects:
+                    effects[step+1] = mgr.mkAnd(effects[step+1], Node(action.add_effects[add][1]))
 
                 # Encode delete effects (conditional supported)
-                for de in action.del_effects:
-                    pass
+                for de in range(0, len(action.del_effects)):  #for de in action.del_effects:
+                    effects[step+1] = mgr.mkAnd(effects[step+1], mgr.mkNot(Node(action.del_effects[de][1])))
+
+            actions[step] = mgr.mkAnd(preconditions, effects)
 
         return actions
 
@@ -246,6 +267,7 @@ class Encoder():
         return atleastone
 
     def encode(self, horizon):
+        # type: (object) -> object
         """
         Basic routine for bounded encoding:
         encodes initial, transition,goal conditions
