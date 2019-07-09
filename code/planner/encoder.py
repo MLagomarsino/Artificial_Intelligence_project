@@ -11,10 +11,13 @@ import numpy as np
 class Encoder():
 
     def __init__(self, task, modifier):
-        self.task = task
-        self.modifier = modifier  # genera assiomi (linear (1 azione per volta -> serie) e parallel (+ azioni non in conflitto))
 
-        # grounding (all combinations of params) -> fare per ogni istante
+        self.task = task
+        # generates axioms (linear (1 action at time -> series)
+        # and parallel (+ non conflicting actions))
+        self.modifier = modifier
+
+        # grounding (all combinations of params) -> do it for each instant
         (self.boolean_fluents,
          self.actions,
          self.numeric_fluents,
@@ -26,11 +29,18 @@ class Encoder():
          self.depends_on,
          self.axioms_by_layer) = self.sort_axioms()
 
-        # attention to conflictable actions (per linear non serve modificare!!)
+        # attention to concurrent actions (linear: don't need to modify!!)
         self.mutexes = self.computeMutexes()
 
         # Add formula mgr
         self.formula_mgr = FormulaMgr()
+
+        # Inverse mapping: create a (unique) list to store associations
+        self.inverse = [None]  # first element of the list is none
+        # Create boolean variables for boolean fluents
+        self.boolean_variables = defaultdict(dict)
+        # Create propositional variables for actions ids
+        self.action_variables = defaultdict(dict)
 
     def ground(self):
         """
@@ -88,20 +98,16 @@ class Encoder():
         # associate to each action or fluent an identifier (called counter)
         # store the mappings in a appropriate structure
 
-        # creo un dizionario di diz : 1 livello = step, 2 livello = azione o fluente
-        # valore coppia di chiavi (dei due livelli) e' un numero (unico, per configurazione)
-        # se a e' dizionario
-        # a[0]["pickup a"]
+        # create a dictionary of dictionaries:
+        # 1 level = step, 2 level = action or fluent
+        # value of the couple of keys (of the two levels) is a number (unique for config)
+        # if a is a dictionary: a[0]["pickup a"]
 
         # unique counter to identify fluents and actions
         counter = 1
-        # Inverse mapping: create a (unique) list to store associations
-        self.inverse = [None]  # first element of the list is none
 
-        # Create boolean variables for boolean fluents
-        self.boolean_variables = defaultdict(dict)
         # a dictionary of 2 levels is created:
-        #   level1 = steps ; level2 = fluents
+        # level1 = steps ; level2 = fluents
         for step in range(self.horizon + 1):
             for fluent in self.boolean_fluents:
                 # Direct mapping: assign variable and increment the counter to obtain a unique identifier
@@ -110,8 +116,6 @@ class Encoder():
                 # Inverse mapping: append couple (fluent, step)
                 self.inverse.append((str(fluent), step))
 
-        # Create propositional variables for actions ids
-        self.action_variables = defaultdict(dict)
         # a dictionary of 2 levels is created:
         #   level1 = steps ; level2 = actions
         for step in range(self.horizon):
@@ -166,8 +170,8 @@ class Encoder():
 
             # Check if goal is just a single atom
             if isinstance(goal, pddl.conditions.Atom):
-                if not goal.predicate in axiom_names:
-                    propositional_subgoal.append(goal) # M
+                if goal.predicate not in axiom_names:
+                    propositional_subgoal.append(goal)  # M
 
             # Check if goal is a conjunction
             elif isinstance(goal, pddl.conditions.Conjunction):
@@ -179,7 +183,6 @@ class Encoder():
                     'Propositional goal condition \'{}\': type \'{}\' not recognized'.format(goal, type(goal)))
 
             return propositional_subgoal
-
 
         propositional_subgoal = encodePropositionalGoals()
 
@@ -195,7 +198,7 @@ class Encoder():
             goal = Node(propositional_subgoal[0])
 
             for i in range(1, len(propositional_subgoal)):
-                # put all subgoals in AND
+                # put all sub-goals in AND
                 goal = mgr.mkAnd(goal, Node(propositional_subgoal[i]))
 
         return goal
@@ -208,29 +211,40 @@ class Encoder():
         """
         mgr = FormulaMgr()
         actions = []
-        #actions.append(Node(1))
+        # actions.append(Node(1))
         preconditions = []
-        #preconditions.append(Node(1))
+        # preconditions.append(Node(1))
         effects = []
 
-        effects.append(None)
-        for step in range(self.horizon):
+        for step in range(0, self.horizon):
+
+            check = True
+            first = 1
 
             for action in self.actions:
 
                 # Encode preconditions
-                preconditions.append(Node(action.condition[0]))
-                for pre in range(1, len(action.condition)-1):
-                    preconditions[step] = mgr.mkAnd(preconditions[step], Node(action.condition[pre]))
+                if check:
+                    if step == 0:
+                        effects.append(None)
+                    preconditions.append(Node(action.condition[0]))
+                    effects.append(Node(action.add_effects[0][1]))
+                    check = 0
+                else:
+                    first = 0
+
+                for pre in range(first, len(action.condition)):
+                    preconditions[step] = (mgr.mkAnd(preconditions[step], Node(action.condition[pre])))
 
                 # Encode add effects (conditional supported)
-                effects.append(Node(action.add_effects[0][1]))
-                for add in range(1, len(action.add_effects)): #for add in action.add_effects:
+                for add in range(first, len(action.add_effects)):  # for add in action.add_effects:
                     effects[step+1] = mgr.mkAnd(effects[step+1], Node(action.add_effects[add][1]))
 
                 # Encode delete effects (conditional supported)
-                for de in range(0, len(action.del_effects)):  #for de in action.del_effects:
+                for de in range(0, len(action.del_effects)):  # for de in action.del_effects:
                     effects[step+1] = mgr.mkAnd(effects[step+1], mgr.mkNot(Node(action.del_effects[de][1])))
+
+                    # perchè cazzo va a formula alla fine della seconda azione???
 
             actions[step] = mgr.mkAnd(preconditions, effects)
 
@@ -317,45 +331,3 @@ class Encoder():
     def dump(self):
         print('Dumping encoding')
         raise Exception('Not implemented yet')
-
-
-class EncoderSAT(Encoder):
-
-    def encode(self, horizon):
-        self.horizon = horizon
-
-        # Create variables
-        self.createVariables()
-
-        # Start encoding formula
-
-        formula = defaultdict(list)
-
-        # Encode initial state axioms
-
-        formula['initial'] = self.encodeInitialState()
-
-        # Encode goal state axioms
-
-        formula['goal'] = self.encodeGoalState()
-
-        # Encode universal axioms
-
-        formula['actions'] = self.encodeActions()
-
-        # Encode explanatory frame axioms
-
-        formula['frame'] = self.encodeFrame()
-
-        # Encode execution semantics (lin/par)
-
-        formula['sem'] = self.encodeExecutionSemantics()
-
-        # Encode at least one axioms
-
-        formula['alo'] = self.encodeAtLeastOne()
-
-        # mettere tutto in AND (devono essere tutte vere)
-        # chiamo formula manager dentro formula
-
-        return formula
