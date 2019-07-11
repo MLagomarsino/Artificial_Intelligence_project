@@ -173,6 +173,23 @@ class FormulaMgr:
         temp = Node(0, op=Operator.IMP, left=f, right=g)
         return self.mkOp(temp)
 
+    # ADDED
+    def mkOpArray(self, var_list, op):
+        assert (len(var_list) != 0)
+        len_list = len(var_list)
+        if len_list == 1:
+            return var_list[0]
+        left = self.mkOpArray(var_list[0:len_list / 2], op)
+        right = self.mkOpArray(var_list[len_list / 2:len_list], op)
+        temp = Node(0, op=op, left=left, right=right)
+        return self.mkOp(temp)
+
+    # Create a AND between all the elements in the var_list
+    def mkAndArray(self, var_list):
+        return self.mkOpArray(var_list, Operator.AND)
+
+    def mkOrArray(self, var_list):
+        return self.mkOpArray(var_list, Operator.OR)
 
 class NnfConversion:
 

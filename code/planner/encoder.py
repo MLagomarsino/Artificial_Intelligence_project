@@ -148,17 +148,14 @@ class Encoder():
         # in init formula then it must be set to false.
 
         for variable in self.boolean_variables[0].values():
-            if variable not in initial:
-                initial.append(self.formula_mgr.mkNot(self.formula_mgr.mkVar(variable)))
+            v = self.formula_mgr.mkVar(variable)
+            if v not in initial:
+                initial.append(self.formula_mgr.mkNot(v))
 
-        ff = self.formula_mgr.mkVar(initial.pop(0))
+        # Encode initial state as a formula
+        initial_state = self.formula_mgr.mkAndArray(initial)
 
-        for code in initial:
-            # put all sub-goals in AND
-            sub_goal = self.formula_mgr.mkVar(code)
-            ff = self.formula_mgr.mkAnd(ff, sub_goal)
-
-        return ff
+        return initial_state
 
     def encodeGoalState(self):
         """
@@ -178,43 +175,23 @@ class Encoder():
             if goal.predicate not in axiom_names: # ?? axiom name ??
                 # MARTA!! If the goal is in my list of variables associated to available fluents
                 if goal in self.boolean_fluents:
-                    propositional_subgoal.append(self.boolean_variables[self.horizon][str(goal)])  # M
+                    propositional_subgoal.append(self.formula_mgr.mkVar(self.boolean_variables[self.horizon][str(goal)]))  # M
 
         # Check if goal is a conjunction
         elif isinstance(goal, pddl.conditions.Conjunction):
             for fact in goal.parts:
                 # MARTA!! If the goal is in my list of variables associated to available fluents
                 if fact in self.boolean_fluents:
-                    propositional_subgoal.append(self.boolean_variables[self.horizon][str(fact)])  # M
-
-                #propositional_subgoal.append(fact)
+                    propositional_subgoal.append(self.formula_mgr.mkVar(self.boolean_variables[self.horizon][str(fact)]))  # M
 
         else:
             raise Exception(
                 'Propositional goal condition \'{}\': type \'{}\' not recognized'.format(goal, type(goal)))
 
-        # Encode goal in a formula     ???????????
-        mgr = FormulaMgr()
-
-        # Check if goal is just a single atom -> it's enough
-
-        # Check if goal is a conjunction
-        goal = self.formula_mgr.mkVar(propositional_subgoal.pop(0))
-
-        for code in propositional_subgoal:
-            # put all sub-goals in AND
-            sub_goal = self.formula_mgr.mkVar(code)
-            goal = self.formula_mgr.mkAnd(goal, sub_goal)
+        # Encode goal in a formula
+        goal = self.formula_mgr.mkAndArray(propositional_subgoal)
 
         return goal
-
-    def f(self, list):
-        if len(list)==1 return list[0]
-        l1 #prima metà list
-        l2 # seconda metà list
-        r1 = f(l1)
-        r2 = f(l2)
-        return mkand(r1,r2)
 
     def encodeActions(self):
         """
@@ -225,54 +202,106 @@ class Encoder():
         mgr = FormulaMgr()
         # Create dictionary with key
         actions = []
-
+        action_implication = []
 
         for step in range(0, self.horizon):
 
             for action in self.actions:
 
-                action_name = self.action_variables[step][action.name]
+                action_name = self.formula_mgr.mkVar(self.action_variables[step][action.name])
 
                 # Encode preconditions
                 preconditions = list()
                 for pre in action.condition:
                     if pre in self.boolean_fluents:
-                        preconditions.append(self.boolean_variables[step][str(pre)])  # M
+                        preconditions.append(self.formula_mgr.mkVar(self.boolean_variables[step][str(pre)]))  # M
 
+                # AND of all preconditions at step
+                allpreconditions = self.formula_mgr.mkAndArray(preconditions)
+                # Action implies the AND of all preconditions at step
+                imply_prec = self.formula_mgr.mkImply(action_name, allpreconditions)
 
                 # Encode add effects (conditional supported)
                 add_effects = list()
                 for add in action.add_effects:
                     add = add[1]
                     if add in self.boolean_fluents:
-                        add_effects.append(self.boolean_variables[step+1][str(add)])
+                        add_effects.append(self.formula_mgr.mkVar(self.boolean_variables[step+1][str(add)]))
+
+                # AND of all effects added at the following step
+                alladdeffects = self.formula_mgr.mkAndArray(add_effects)
+                # Action implies the AND of all effects added at the following step
+                imply_addeffects = self.formula_mgr.mkImply(action_name, alladdeffects)
 
                 # Encode delete effects (conditional supported)
                 del_effects = list()
                 for de in action.del_effects:
                     de = de[1]
                     if de in self.boolean_fluents:
-                        del_effects.append(self.boolean_variables[step+1][str(de)])
+                        del_effects.append(self.formula_mgr.mkNot(self.formula_mgr.mkVar(self.boolean_variables[step+1][str(de)])))
 
-                a = impl(action, and(preconditions))
-                b = impl(action, and(add))
-                c = impl(action, and(not(del))
-                actions.append(and(a,b,c))
+                # AND of all effects deleted at the following step
+                alldeleffects = self.formula_mgr.mkAndArray(del_effects)
+                # Action implies the AND of all effects deleted at the following step
+                imply_deleffects = self.formula_mgr.mkImply(action_name, alldeleffects)
 
-        return and(actions)
+                # AND of imply_prec, imply_addeffects and imply_deleffects
+                action_implication.append(self.formula_mgr.mkAndArray([imply_prec, imply_addeffects, imply_deleffects]))
 
+            # AND of all implications of actions
+            actions.append(self.formula_mgr.mkAndArray(action_implication))
+
+        # AND of all steps
+        return self.formula_mgr.mkAndArray(actions)
+
+    """
+    a = impl(action, and(preconditions))
+    b = impl(action, and(add))
+    c = impl(action, and(not(del))
+    actions.append(and(a,b,c))
+    
+    return and(actions)
+    """
     def encodeFrame(self):
         """
         Encode explanatory frame axioms
         """
         frame = []
+        prossible_performed_actions = []
 
         for step in range(self.horizon):
+
             # Encode frame axioms for boolean fluents
             for fluent in self.boolean_fluents:
-                pass
 
-        return frame
+                fluent_swap = 0
+                # Check if the fluent changes its value, this means that an action is performed
+                for action in self.actions:
+
+                    # check if the fluent is a precondition of the action
+                    if fluent in action.condition:
+
+                        # check if the fluent is deleted by the action
+                        # !!!!! piu di un elemento
+                        for i in range(len(action.del_effects)):
+                            if fluent in action.del_effects[i]:
+
+                                fluent_swap = 1
+                                prossible_performed_actions.append(self.formula_mgr.mkVar(self.action_variables[step][str(action.name)]))
+
+                f_step = self.formula_mgr.mkVar(self.boolean_variables[step][str(fluent)])
+                f_stepplus1 = self.formula_mgr.mkVar(self.boolean_variables[step+1][str(fluent)])
+
+                if fluent_swap:
+                    # if f changes value in two adjacent steps
+                    adjacent_fluents = self.formula_mgr.mkAnd(f_step, f_stepplus1)
+                    atleastone_action = self.formula_mgr.mkOrArray(prossible_performed_actions)
+                    frame.append(self.formula_mgr.mkImply(self.formula_mgr.mkVar(adjacent_fluents, atleastone_action)))
+                else:
+                    frame.append(self.formula_mgr.mkImply(f_step, f_stepplus1))
+                    frame.append(self.formula_mgr.mkImply(f_stepplus1, f_step))
+
+        return self.formula_mgr.mkAndArray(frame)
 
     def encodeExecutionSemantics(self):
 
@@ -283,12 +312,18 @@ class Encoder():
 
     def encodeAtLeastOne(self):
 
+        atleastone_forstep = []
         atleastone = []
 
         for step in range(self.horizon):
-            pass
+            for action in self.actions:
+                action_code = self.action_variables[step][str(action.name)]
+                atleastone_forstep.append(self.formula_mgr.mkVar(action_code))
+            # at least one action should be performed at each step -> OR of all variables of the step
+            atleastone.append(self.formula_mgr.mkOrArray(atleastone_forstep))
 
-        return atleastone
+        # return logic AND of all steps
+        return self.formula_mgr.mkAndArray(atleastone)
 
     def encode(self, horizon):
         # type: (object) -> object
