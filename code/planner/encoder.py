@@ -117,14 +117,15 @@ class Encoder():
                 self.inverse.append((str(fluent), step))
 
         # a dictionary of 2 levels is created:
-        #   level1 = steps ; level2 = actions
+        # level1 = steps ; level2 = actions
         for step in range(self.horizon):
             for a in self.actions:
                 # Direct mapping
-                self.action_variables[step][str(a)] = counter
+                self.action_variables[step][a.name] = counter ### MARTA : a.name invece di str(a)
                 counter += 1
                 # Inverse mapping: append couple (action, step)
-                self.inverse.append((str(a), step))
+                self.inverse.append((a.name, step))
+
 
     def encodeInitialState(self):
         """
@@ -138,20 +139,23 @@ class Encoder():
             if utils.isBoolFluent(fact):
                 if not fact.predicate == '=':
                     if fact in self.boolean_fluents:
-                        pass
-
+                        # M: fluents specifying the initial state
+                        initial.append(self.boolean_variables[0][str(fact)])
             else:
                 raise Exception('Initial condition \'{}\': type \'{}\' not recognized'.format(fact, type(fact)))
 
         # Close-world assumption: if fluent is not asserted
         # in init formula then it must be set to false.
 
-        for variable in self.boolean_variables.values():
+        for variable in self.boolean_variables[0].values():
             if not variable in initial:
-                pass
+                initial.append(-variable)
+
+        # CODIFICA A FORMULA
 
         return initial
 
+    @property
     def encodeGoalState(self):
         """
         Encode formula defining goal state
@@ -170,13 +174,19 @@ class Encoder():
 
             # Check if goal is just a single atom
             if isinstance(goal, pddl.conditions.Atom):
-                if goal.predicate not in axiom_names:
-                    propositional_subgoal.append(goal)  # M
+                if goal.predicate not in axiom_names: # ?? axiom name ??
+                    # MARTA!! If the goal is in my list of variables associated to available fluents
+                    if goal in self.boolean_fluents:
+                        propositional_subgoal.append(self.boolean_variables[self.horizon][str(goal)])  # M
 
             # Check if goal is a conjunction
             elif isinstance(goal, pddl.conditions.Conjunction):
                 for fact in goal.parts:
-                    propositional_subgoal.append(fact)
+                    # MARTA!! If the goal is in my list of variables associated to available fluents
+                    if fact in self.boolean_fluents:
+                        propositional_subgoal.append(self.boolean_variables[self.horizon][str(fact)])  # M
+
+                    #propositional_subgoal.append(fact)
 
             else:
                 raise Exception(
@@ -186,23 +196,25 @@ class Encoder():
 
         propositional_subgoal = encodePropositionalGoals()
 
-        # M
-
+        # Encode goal in a formula     ???????????
         mgr = FormulaMgr()
+        goal = mgr.mkVar("Goal")
+        goal.left = propositional_subgoal[0]
 
-        # Check if goal is just a single atom
-        if len(propositional_subgoal) == 1:
-            goal = Node(propositional_subgoal)
-        else:
-            # Check if goal is a conjunction
-            goal = Node(propositional_subgoal[0])
+        # Check if goal is just a single atom -> it's enough
+
+        # Check if goal is a conjunction
+        if not len(propositional_subgoal) == 1:
 
             for i in range(1, len(propositional_subgoal)):
                 # put all sub-goals in AND
-                goal = mgr.mkAnd(goal, Node(propositional_subgoal[i]))
+                sub_goal = mgr.mkVar("Goal") # SBAGLIATO!!!!!!!!!!!
+                sub_goal.left = propositional_subgoal[i]
+                goal = mgr.mkAnd(goal, sub_goal)
 
         return goal
 
+    @property
     def encodeActions(self):
         """
         Encode action constraints:
@@ -210,43 +222,37 @@ class Encoder():
         and effects
         """
         mgr = FormulaMgr()
+        # Create dictionary with key
         actions = []
-        # actions.append(Node(1))
-        preconditions = []
-        # preconditions.append(Node(1))
-        effects = []
+
 
         for step in range(0, self.horizon):
 
-            check = True
-            first = 1
-
             for action in self.actions:
 
-                # Encode preconditions
-                if check:
-                    if step == 0:
-                        effects.append(None)
-                    preconditions.append(Node(action.condition[0]))
-                    effects.append(Node(action.add_effects[0][1]))
-                    check = 0
-                else:
-                    first = 0
+                action_name = self.action_variables[step][action.name]
 
-                for pre in range(first, len(action.condition)):
-                    preconditions[step] = (mgr.mkAnd(preconditions[step], Node(action.condition[pre])))
+                # Encode preconditions
+                preconditions = list()
+                for pre in action.condition:
+                    if pre in self.boolean_fluents:
+                        preconditions.append(self.boolean_variables[step][str(pre)])  # M
 
                 # Encode add effects (conditional supported)
-                for add in range(first, len(action.add_effects)):  # for add in action.add_effects:
-                    effects[step+1] = mgr.mkAnd(effects[step+1], Node(action.add_effects[add][1]))
+                add_effects = list()
+                for add in action.add_effects:
+                    add = add[1]
+                    if add in self.boolean_fluents:
+                        add_effects.append(self.boolean_variables[step+1][str(add)])  # step +1 giusto???
 
                 # Encode delete effects (conditional supported)
-                for de in range(0, len(action.del_effects)):  # for de in action.del_effects:
-                    effects[step+1] = mgr.mkAnd(effects[step+1], mgr.mkNot(Node(action.del_effects[de][1])))
+                del_effects = list()
+                for de in action.del_effects:
+                    de = de[1]
+                    if de in self.boolean_fluents:
+                        del_effects.append(self.boolean_variables[step+1][str(de)])  # step +1 giusto???
 
-                    # perchè cazzo va a formula alla fine della seconda azione???
-
-            actions[step] = mgr.mkAnd(preconditions, effects)
+                ## ?? come associo ad azione condizioni e effetti?
 
         return actions
 
@@ -254,7 +260,6 @@ class Encoder():
         """
         Encode explanatory frame axioms
         """
-
         frame = []
 
         for step in range(self.horizon):
@@ -284,7 +289,7 @@ class Encoder():
         # type: (object) -> object
         """
         Basic routine for bounded encoding:
-        encodes initial, transition,goal conditions
+        encodes initial, transition, goal conditions
         together with frame and exclusiveness/mutexes axioms
 
         """
@@ -303,7 +308,7 @@ class Encoder():
 
         # Encode goal state axioms
 
-        formula['goal'] = self.encodeGoalState()
+        formula['goal'] = self.encodeGoalState
 
         # Encode universal axioms
 
