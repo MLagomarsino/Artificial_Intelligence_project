@@ -135,12 +135,12 @@ class Encoder():
         initial = []
 
         for fact in self.task.init:
-
             if utils.isBoolFluent(fact):
                 if not fact.predicate == '=':
                     if fact in self.boolean_fluents:
                         # M: fluents specifying the initial state
-                        initial.append(self.boolean_variables[0][str(fact)])
+                        code = self.boolean_variables[0][str(fact)]
+                        initial.append(self.formula_mgr.mkVar(code))
             else:
                 raise Exception('Initial condition \'{}\': type \'{}\' not recognized'.format(fact, type(fact)))
 
@@ -148,73 +148,74 @@ class Encoder():
         # in init formula then it must be set to false.
 
         for variable in self.boolean_variables[0].values():
-            if not variable in initial:
-                initial.append(-variable)
+            if variable not in initial:
+                initial.append(self.formula_mgr.mkNot(self.formula_mgr.mkVar(variable)))
 
-        # CODIFICA A FORMULA
+        ff = self.formula_mgr.mkVar(initial.pop(0))
 
-        return initial
+        for code in initial:
+            # put all sub-goals in AND
+            sub_goal = self.formula_mgr.mkVar(code)
+            ff = self.formula_mgr.mkAnd(ff, sub_goal)
 
-    @property
+        return ff
+
     def encodeGoalState(self):
         """
         Encode formula defining goal state
         """
 
-        def encodePropositionalGoals(goal=None):
+        propositional_subgoal = []
 
-            propositional_subgoal = []
+        # UGLY HACK: we skip atomic propositions that are added
+        # to handle numeric axioms by checking names.
+        axiom_names = [axiom.name for axiom in self.task.axioms]
 
-            # UGLY HACK: we skip atomic propositions that are added
-            # to handle numeric axioms by checking names.
-            axiom_names = [axiom.name for axiom in self.task.axioms]
+        goal = self.task.goal
 
-            if goal is None:
-                goal = self.task.goal
+        # Check if goal is just a single atom
+        if isinstance(goal, pddl.conditions.Atom):
+            if goal.predicate not in axiom_names: # ?? axiom name ??
+                # MARTA!! If the goal is in my list of variables associated to available fluents
+                if goal in self.boolean_fluents:
+                    propositional_subgoal.append(self.boolean_variables[self.horizon][str(goal)])  # M
 
-            # Check if goal is just a single atom
-            if isinstance(goal, pddl.conditions.Atom):
-                if goal.predicate not in axiom_names: # ?? axiom name ??
-                    # MARTA!! If the goal is in my list of variables associated to available fluents
-                    if goal in self.boolean_fluents:
-                        propositional_subgoal.append(self.boolean_variables[self.horizon][str(goal)])  # M
+        # Check if goal is a conjunction
+        elif isinstance(goal, pddl.conditions.Conjunction):
+            for fact in goal.parts:
+                # MARTA!! If the goal is in my list of variables associated to available fluents
+                if fact in self.boolean_fluents:
+                    propositional_subgoal.append(self.boolean_variables[self.horizon][str(fact)])  # M
 
-            # Check if goal is a conjunction
-            elif isinstance(goal, pddl.conditions.Conjunction):
-                for fact in goal.parts:
-                    # MARTA!! If the goal is in my list of variables associated to available fluents
-                    if fact in self.boolean_fluents:
-                        propositional_subgoal.append(self.boolean_variables[self.horizon][str(fact)])  # M
+                #propositional_subgoal.append(fact)
 
-                    #propositional_subgoal.append(fact)
-
-            else:
-                raise Exception(
-                    'Propositional goal condition \'{}\': type \'{}\' not recognized'.format(goal, type(goal)))
-
-            return propositional_subgoal
-
-        propositional_subgoal = encodePropositionalGoals()
+        else:
+            raise Exception(
+                'Propositional goal condition \'{}\': type \'{}\' not recognized'.format(goal, type(goal)))
 
         # Encode goal in a formula     ???????????
         mgr = FormulaMgr()
-        goal = mgr.mkVar("Goal")
-        goal.left = propositional_subgoal[0]
 
         # Check if goal is just a single atom -> it's enough
 
         # Check if goal is a conjunction
-        if not len(propositional_subgoal) == 1:
+        goal = self.formula_mgr.mkVar(propositional_subgoal.pop(0))
 
-            for i in range(1, len(propositional_subgoal)):
-                # put all sub-goals in AND
-                sub_goal = mgr.mkVar("Goal") # SBAGLIATO!!!!!!!!!!!
-                sub_goal.left = propositional_subgoal[i]
-                goal = mgr.mkAnd(goal, sub_goal)
+        for code in propositional_subgoal:
+            # put all sub-goals in AND
+            sub_goal = self.formula_mgr.mkVar(code)
+            goal = self.formula_mgr.mkAnd(goal, sub_goal)
 
         return goal
 
-    @property
+    def f(self, list):
+        if len(list)==1 return list[0]
+        l1 #prima metà list
+        l2 # seconda metà list
+        r1 = f(l1)
+        r2 = f(l2)
+        return mkand(r1,r2)
+
     def encodeActions(self):
         """
         Encode action constraints:
@@ -238,23 +239,27 @@ class Encoder():
                     if pre in self.boolean_fluents:
                         preconditions.append(self.boolean_variables[step][str(pre)])  # M
 
+
                 # Encode add effects (conditional supported)
                 add_effects = list()
                 for add in action.add_effects:
                     add = add[1]
                     if add in self.boolean_fluents:
-                        add_effects.append(self.boolean_variables[step+1][str(add)])  # step +1 giusto???
+                        add_effects.append(self.boolean_variables[step+1][str(add)])
 
                 # Encode delete effects (conditional supported)
                 del_effects = list()
                 for de in action.del_effects:
                     de = de[1]
                     if de in self.boolean_fluents:
-                        del_effects.append(self.boolean_variables[step+1][str(de)])  # step +1 giusto???
+                        del_effects.append(self.boolean_variables[step+1][str(de)])
 
-                ## ?? come associo ad azione condizioni e effetti?
+                a = impl(action, and(preconditions))
+                b = impl(action, and(add))
+                c = impl(action, and(not(del))
+                actions.append(and(a,b,c))
 
-        return actions
+        return and(actions)
 
     def encodeFrame(self):
         """
@@ -308,7 +313,7 @@ class Encoder():
 
         # Encode goal state axioms
 
-        formula['goal'] = self.encodeGoalState
+        formula['goal'] = self.encodeGoalState()
 
         # Encode universal axioms
 

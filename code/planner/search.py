@@ -19,13 +19,11 @@ class Search():
 class LinearSearch(Search):
 
     def do_search(self):
-        # Override initial horizon (M: estimate the number of actions to reach the goal)
-        # self.horizon = 1
 
         print('Start linear search')
         # Implement linear search here and return a plan
 
-        while not self.found:
+        while True:
 
             # Translate the plan in a propositional formula
             planning_formula = self.encoder.encode(self.horizon)
@@ -36,10 +34,11 @@ class LinearSearch(Search):
 
             # planning_formula is satisfied
             if s.run():
-                # exit the loop
-                self.found = True
                 # Create a plan object
                 final_plan = Plan(s, encoder)
+                # exit the loop
+                break
+
 
             # Inverse translation: to a number corresponds action
             # at a certain step
