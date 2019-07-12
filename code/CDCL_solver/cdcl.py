@@ -6,22 +6,22 @@ Created on Mon Apr  3 11:32:47 2017
 @author: tac
 """
 
+
 # MODIFIED: keep track of reasons
 class Status:
     def __init__(self, var_index, closed, clause):
         self.var_index = var_index
         self.closed = closed
-        # MARTA: ADDED : no reason (random choice) or due to assignment of variable in clause passed as parameter 
         self.reason = clause
 
+
 class Solver:
-    def __init__(self, formula, heuristic, do_trace):
+    def __init__(self, formula, heuristic, do_trace=False):
         self.formula = formula
         self.choose_variable = heuristic
-        # ADDED : boolean to decide whether trace or not the assignment (to avoid infinite loops as it can happen in DPLL)
         self.do_trace = do_trace
         self.stack = list()
-        
+
     def run(self):
         done = False
         formula = self.formula
@@ -53,8 +53,8 @@ class Solver:
                 var = formula.variable_list[abs(lit)]
                 if (var.value == 0):
                     # Assign the variable so as to subsume the clause
-                    formula.do_eval(abs(lit), lit/abs(lit))
-                    # Record the assignment in the stack as "closed"
+                    formula.do_eval(abs(lit), lit / abs(lit))
+                    # Record the assignemnt in the stack as "closed"
                     # ADDED: Add the reason for this assignment (the unit)
                     stack.append(Status(abs(lit), True, cl))
                     self.trace("UNIT on:", lit, " with reason ", cl.lit_list)
@@ -62,29 +62,20 @@ class Solver:
         return
 
     # MODIFIED: simple conflict-driven backjumping and learning
-    # MARTA: 
-    # Backtracking: skip irrelevant branches which didn't cause the conflict
-    # Learning: adding clauses to the db in order to avoid that mistake in the future
-    # After a while if I dindn't find a solution I could restart the solver, if I do that in a SAT solver
-    # it is no more complete because I would restart forever
-    # But in this case it is complete because sooner or later I will find an empty clause
-    
-    # DPLL : backtrack means assign the conflit variable the other value
-    # CDCL : 
     def backtrack(self):
         formula = self.formula
         stack = self.stack
         # Initialize the working reason
         wr = self.init_working_reason(formula)
         # Reset the empty clause list
-        formula.empty_cl_list.clear()
+        formula.empty_cl_list = list()
         # Go back in the stack, search for an "open" assigment
         while (len(stack) > 0):
             sr = stack.pop()
             # Get the variable index
             var_index = sr.var_index
             self.trace("RETRACT: ", var_index * formula.variable_list[var_index].value)
-            # If the variable caused the conflict (it is in working reason), resolve its reason
+            # If the variable caused the conflict, resolve its reason
             # with the working reason to obtain a new working reason
             if (var_index in wr):
                 self.update_working_reason(wr, sr.reason, formula)
@@ -106,7 +97,7 @@ class Solver:
                 # If the branch literal is not in the working
                 # reason it is irrelevant for the current conflict
         # end of while 
-        
+
         # No further backtracking is possible: the search must end
         return True
 
@@ -120,19 +111,18 @@ class Solver:
     # ADDED
     def init_working_reason(self, formula):
         formula = self.formula
-        wr = dict() # initialize as a dictionary
+        wr = dict()
         cl_index = formula.empty_cl_list.pop()
         cl = formula.clause_list[cl_index]
-        # MARTA: each time a variable cause a conflict -> I update it (ex (-1,2,3)^(-1,-2,4) -> (-1,3,4))
         for lit in cl.lit_list:
             wr[abs(lit)] = abs(lit) / lit
-            if (lit > 0):
+            if lit > 0:
                 formula.conflict_list[abs(lit)].pos += 1
             else:
                 formula.conflict_list[abs(lit)].neg += 1
         self.trace("INIT working reason:", self.extract_lits_from_working_reason(wr))
         return wr
-    
+
     # ADDED
     def update_working_reason(self, wr, clause, formula):
         # Do not consider empty reasons (branches)
@@ -141,17 +131,15 @@ class Solver:
         # Resolution between the current working reason and 'clause"
         lits = clause.lit_list
         self.trace("UPDATE working reason with clause:", lits)
-        # MARTA: scan of the input reason
         for lit in lits:
             var = abs(lit)
-            if var not in wr: # MARTA: takes constant time because wr is dictionary 
-                              #        as list it would take exponential time
+            if var not in wr:
                 # The literal is not in the wr, so it should be added
                 wr[var] = var / lit
                 if (lit > 0):
                     formula.conflict_list[var].pos += 1
                 else:
-                    formula.conflict_list[var].neg += 1  
+                    formula.conflict_list[var].neg += 1
             else:
                 # The literal is in the wr: what to do?
                 wr_lit = wr[var] * var

@@ -4,7 +4,7 @@ from planner.plan import Plan
 import utils
 
 from CDCL_solver.formula import Formula
-from CDCL_solver.dpll import Solver
+from CDCL_solver.cdcl import Solver
 from CDCL_solver.heuristics import RandomHeuristic
 
 
