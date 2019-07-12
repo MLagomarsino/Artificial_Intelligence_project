@@ -13,7 +13,6 @@ from planner import search
 
 val_path = '/bin/validate'
 
-
 def main(BASE_DIR):
     # Parse planner args
     args = arguments.parse_args()

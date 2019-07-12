@@ -57,7 +57,7 @@ class Node:
     def do_print(self, print_id=False):
         # Internal function to print IDs
         def get_id(i, flag):
-            if (flag):
+            if flag:
                 return ":" + str(i)
             else:
                 return ""
@@ -103,14 +103,18 @@ class FormulaMgr:
                 self.dispose(node.left)
             if node.right is not None:
                 self.dispose(node.right)
+            # TODO : coding according to label (not ID)
+            """
             # If the node has a label, remove it from the index
             if node.label is not None:
-                self.name2id.pop(node.label)
+                self.name2id.pop(node.label)                           # MARTA
+
             # Remove the node from all other indexes
             self.node2id.pop(node)
             self.id2node[node.id] = None
             # The id can be recycled
             self.recycleIds.append(node.id)
+            """
 
     # Make a variable. The id is assigned by the manager, the
     # label can be chosen by the user. The label must be unique
@@ -173,23 +177,27 @@ class FormulaMgr:
         temp = Node(0, op=Operator.IMP, left=f, right=g)
         return self.mkOp(temp)
 
-    # ADDED
-    def mkOpArray(self, var_list, op):
-        assert (len(var_list) != 0)
-        len_list = len(var_list)
+    # Operator for working with lists (Recursive function)
+    def mkOpArray(self, lit_list, op):
+        assert (len(lit_list) != 0)
+        # Save the length of the list
+        len_list = len(lit_list)
         if len_list == 1:
-            return var_list[0]
-        left = self.mkOpArray(var_list[0:len_list / 2], op)
-        right = self.mkOpArray(var_list[len_list / 2:len_list], op)
-        temp = Node(0, op=op, left=left, right=right)
+            return lit_list[0]
+        # Create a balanced tree
+        left_half = self.mkOpArray(lit_list[0:len_list / 2], op)
+        right_half = self.mkOpArray(lit_list[len_list / 2:len_list], op)
+        temp = Node(0, op=op, left=left_half, right=right_half)
         return self.mkOp(temp)
 
-    # Create a AND between all the elements in the var_list
-    def mkAndArray(self, var_list):
-        return self.mkOpArray(var_list, Operator.AND)
+    # AND among all the elements in the lit_list
+    def mkAndArray(self, lit_list):
+        return self.mkOpArray(lit_list, Operator.AND)
 
-    def mkOrArray(self, var_list):
-        return self.mkOpArray(var_list, Operator.OR)
+    # OR among all the elements in the lit_list
+    def mkOrArray(self, lit_list):
+        return self.mkOpArray(lit_list, Operator.OR)
+
 
 class NnfConversion:
 
@@ -207,6 +215,7 @@ class NnfConversion:
         return node
 
     def convert(self, node, polarity):
+        # TODO : coding according to label (not ID)
         if node.op is None:
             if polarity > 0:
                 return node
@@ -273,7 +282,7 @@ class CnfConversion:
         # Fail if the formula is not in NNF
         assert (node.op != Operator.NOT) or (node.left.op is None)
         # Nothing to do if a literal is reached (variable or negation thereof) 
-        if (node.op is None) or (node.op == Operator.NOT):
+        if (node.op is None) or (node.op == Operator.NOT):                          ##!!!!!
             return
         # An operator: AND, OR, IMP: add the definitions and propagate 
         # If the sub-formula was already visited, no need to visit again
@@ -296,6 +305,7 @@ class CnfConversion:
             l1 = neg(node.left.left.id)
         else:
             l1 = node.left.id
+
         # The literal corresponding to the right operand
         # Negations must be applied to variables only
         if node.right.op == Operator.NOT:
@@ -303,6 +313,7 @@ class CnfConversion:
             l2 = neg(node.right.left.id)
         else:
             l2 = node.right.id
+
         if node.op == Operator.AND:
             def_clauses.append([l, neg(l1), neg(l2)])
             def_clauses.append([neg(l), l1])

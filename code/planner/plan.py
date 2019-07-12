@@ -10,11 +10,33 @@ class Plan():
         """
         Extract linear plan from model of the formula
         """
+        plan = []
 
-        # extract plan for model
-        plan = model.extract_assignment()
+        # Extract plan for model
+        for lit in model:
+
+            # Inverse translation: from number to action
+            variable = str(encoder.inverse[lit])
+
+            # Check number corresponds to an action (not to a fluent)
+            for action in encoder.action_variables:
+
+                temp = encoder.action_variables[action].values()
+                if lit in encoder.action_variables[action].values():
+                    # Add action in the list of plan actions
+                    plan.append(str(encoder.inverse[lit]))
 
         return plan
+
+    def do_print(self):
+
+        print("Actions to perform for reaching the goal:")
+
+        for action in self.plan:
+            print(" " + action)
+
+        print(" ")
+
 
     def validate(self, val, domain, problem):
         from tempfile import NamedTemporaryFile

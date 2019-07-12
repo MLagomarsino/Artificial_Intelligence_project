@@ -13,23 +13,28 @@ class LinearModifier(Modifier):
         exor_actions = []
         formula_mgr = FormulaMgr()
 
-        # TODO : implementazione 1 azione per step EXOR
+        # One action at each step
         for step in range(bound):
 
-            for performed_action in variables:
+            for performed_action in variables[step]:
 
-                performed_action_name = formula_mgr.mkVar(variables)
+                # Performed action
+                performed_action_code = formula_mgr.mkVar(variables[step][performed_action])
 
-                action_name = list()
+                not_performed_action_code = list()
+                all_actions = list()
 
-                for action in variables:
+                for action in variables[step]:
+                    # Not performed actions
                     if not action == performed_action:
-                        action_name.append(formula_mgr.mkVar(variables[step][action.name]))
+                        action_code = formula_mgr.mkVar(variables[step][action])
+                        not_performed_action_code.append(formula_mgr.mkNot(action_code))
 
-                all_actions = formula_mgr.mkNot(formula_mgr.mkAndArray(action_name))
+                # If I perform performed_action, I don't perform all the others
+                not_performed_action_code.insert(0, performed_action_code)
+                all_actions.append(formula_mgr.mkAndArray(not_performed_action_code))
 
-                exor_actions.append(formula_mgr.mkAnd(performed_action_name, all_actions))
-
-
+            # EXOR for each step
+            exor_actions.append(formula_mgr.mkOrArray(all_actions))
 
         return formula_mgr.mkAndArray(exor_actions)

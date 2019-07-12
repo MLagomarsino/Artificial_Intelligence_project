@@ -32,7 +32,7 @@ class Solver:
                 # The formula is satisfied: end of search
                 done = True
             elif formula.is_contradicted():
-                # The formula is contraticted: keep searching if possible, otherwise give up
+                # The formula is contradicted: keep searching if possible, otherwise give up
                 done = self.backtrack()
             else:
                 # We must choose a variable and assign it tentatively

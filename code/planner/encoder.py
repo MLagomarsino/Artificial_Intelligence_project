@@ -1,7 +1,7 @@
 # encoding: utf-8
 import translate.pddl as pddl
 import utils
-from formula import FormulaMgr, Node
+from formula import FormulaMgr
 from translate import instantiate
 from translate import numeric_axiom_rules
 from collections import defaultdict
@@ -113,19 +113,18 @@ class Encoder():
                 # Direct mapping: assign variable and increment the counter to obtain a unique identifier
                 self.boolean_variables[step][str(fluent)] = counter
                 counter += 1
-                # Inverse mapping: append couple (fluent, step)
-                self.inverse.append((str(fluent), step))
+                # Inverse mapping
+                self.inverse.append(str(fluent) + "@" + str(step))
 
         # a dictionary of 2 levels is created:
         # level1 = steps ; level2 = actions
         for step in range(self.horizon):
             for a in self.actions:
                 # Direct mapping
-                self.action_variables[step][a.name] = counter ### MARTA : a.name invece di str(a)
+                self.action_variables[step][a.name] = counter
                 counter += 1
-                # Inverse mapping: append couple (action, step)
-                self.inverse.append((a.name, step))
-
+                # Inverse mapping
+                self.inverse.append(str(a.name) + "@" + str(step))
 
     def encodeInitialState(self):
         """
@@ -183,7 +182,8 @@ class Encoder():
             for fact in goal.parts:
                 # MARTA!! If the goal is in my list of variables associated to available fluents
                 if fact in self.boolean_fluents:
-                    propositional_subgoal.append(self.formula_mgr.mkVar(self.boolean_variables[self.horizon][str(fact)]))  # M
+                    goal_index = self.boolean_variables[self.horizon][str(fact)]
+                    propositional_subgoal.append(self.formula_mgr.mkVar(goal_index))  # M
 
         else:
             raise Exception(
@@ -200,7 +200,7 @@ class Encoder():
         each action variable implies its preconditions
         and effects
         """
-        mgr = FormulaMgr()
+
         # Create dictionary with key
         actions = []
         action_implication = []
@@ -311,11 +311,11 @@ class Encoder():
                     atleastone_action = self.formula_mgr.mkOrArray(prossible_performed_actions)
 
                     frame.append(self.formula_mgr.mkImply(negation_adjacent_fluents, atleastone_action))
-
+                """
                 else:
-                    # Fluent cannot change its value
+                    # Fluent cannot change its value            ????????????????????????????????????????????????serve?
                     frame.append(self.formula_mgr.mkVar(self.boolean_variables[step][str(fluent)]))
-
+                """
         return self.formula_mgr.mkAndArray(frame)
 
     def encodeExecutionSemantics(self):
@@ -375,8 +375,8 @@ class Encoder():
         formula['frame'] = self.encodeFrame()
 
         # Encode execution semantics (lin/par)
-        # TODO
-        # formula['sem'] = self.encodeExecutionSemantics()
+        # TODO : check
+        formula['sem'] = self.encodeExecutionSemantics()
 
         # Encode at least one axioms
 

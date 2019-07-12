@@ -5,7 +5,7 @@ import utils
 
 from CDCL_solver.formula import Formula
 from CDCL_solver.cdcl import Solver
-from CDCL_solver.heuristics import RandomHeuristic
+from CDCL_solver.heuristics import RandomHeuristic, PureMomsHeuristic
 
 from formula import FormulaMgr, NnfConversion, CnfConversion
 
@@ -24,46 +24,48 @@ class LinearSearch(Search):
         print('Start linear search')
         # Implement linear search here and return a plan
 
+        mgr = FormulaMgr()
+
         while True:
 
-            mgr = FormulaMgr()
-
+            final_formula = Formula()
             # Translate the plan in a propositional formula
             planning_formula = self.encoder.encode(self.horizon)
 
-
-            planning_formula.do_print()
+            #planning_formula.do_print()
 
             # Conversion to NNF (Negative Normal Form)
             nnf = NnfConversion(mgr)
             formula_nnf = nnf.do_conversion(planning_formula)
 
             # Conversion to CNF (Conjunctive Normal Form)
-            cnf = CnfConversion(mgr)
-            formula_cnf = cnf.do_conversion(formula_nnf)
-            """
+            formula_cnf = CnfConversion(mgr)
+            formula_cnf.do_conversion(formula_nnf)
+
+            #print(formula_cnf.get_clauses())
+
+            # TODO
+            final_formula.set_cnf(self.encoder.inverse.__len__(), [[45,46],[56,50]])# formula_cnf.clauses)
 
             # Solve the built formula using CDCL solver (Random Heuristic)
-            #h = RandomHeuristic()
-            #solution = Solver(formula_cnf, h, True)
+            h = PureMomsHeuristic(True)
+            s = Solver(final_formula, h, True)
 
+            solution = s.run()
 
-            # planning_formula is satisfied
-            if solution.run():
-                # Create a plan object
-                final_plan = Plan(solution, encoder)
-                # exit the loop
+            if not solution:
+                # Increase horizon
+                self.horizon += 1
+
+            else:
+                # A plan is found
+                print("\nThe PLAN is found!")
+
+                # Create a Plan object
+                problem_plan = Plan(solution, self.encoder)
+
+                problem_plan.do_print()
                 break
-            """
 
-            # Inverse translation: to a number corresponds action
-            # at a certain step
-
-            # Increase horizon
-            self.horizon += 1
-
-            print(self.encoder.actions[0].name)
-
-        # Must return a plan object
-        # when plan is found
-        return final_plan
+        # Return a plan object
+        return problem_plan
