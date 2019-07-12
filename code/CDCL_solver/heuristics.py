@@ -5,7 +5,7 @@ Created on Mon Apr 15 15:32:56 2019
 
 @author: tac
 """
-from dpll import Status
+from cdcl import Status
 import random
 
 class RandomHeuristic:

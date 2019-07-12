@@ -7,6 +7,7 @@ from CDCL_solver.formula import Formula
 from CDCL_solver.cdcl import Solver
 from CDCL_solver.heuristics import RandomHeuristic
 
+from formula import FormulaMgr, NnfConversion, CnfConversion
 
 
 class Search():
@@ -25,20 +26,35 @@ class LinearSearch(Search):
 
         while True:
 
+            mgr = FormulaMgr()
+
             # Translate the plan in a propositional formula
             planning_formula = self.encoder.encode(self.horizon)
 
+
+            planning_formula.do_print()
+
+            # Conversion to NNF (Negative Normal Form)
+            nnf = NnfConversion(mgr)
+            formula_nnf = nnf.do_conversion(planning_formula)
+
+            # Conversion to CNF (Conjunctive Normal Form)
+            cnf = CnfConversion(mgr)
+            formula_cnf = cnf.do_conversion(formula_nnf)
+            """
+
             # Solve the built formula using CDCL solver (Random Heuristic)
-            h = RandomHeuristic()
-            s = Solver(planning_formula, h, True)
+            #h = RandomHeuristic()
+            #solution = Solver(formula_cnf, h, True)
+
 
             # planning_formula is satisfied
-            if s.run():
+            if solution.run():
                 # Create a plan object
-                final_plan = Plan(s, encoder)
+                final_plan = Plan(solution, encoder)
                 # exit the loop
                 break
-
+            """
 
             # Inverse translation: to a number corresponds action
             # at a certain step

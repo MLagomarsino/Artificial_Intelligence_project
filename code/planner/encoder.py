@@ -150,7 +150,8 @@ class Encoder():
         for variable in self.boolean_variables[0].values():
             v = self.formula_mgr.mkVar(variable)
             if v not in initial:
-                initial.append(self.formula_mgr.mkNot(v))
+                negated_v = self.formula_mgr.mkNot(v)
+                initial.append(negated_v)
 
         # Encode initial state as a formula
         initial_state = self.formula_mgr.mkAndArray(initial)
@@ -267,7 +268,6 @@ class Encoder():
         Encode explanatory frame axioms
         """
         frame = []
-        prossible_performed_actions = []
 
         for step in range(self.horizon):
 
@@ -275,31 +275,46 @@ class Encoder():
             for fluent in self.boolean_fluents:
 
                 fluent_swap = 0
-                # Check if the fluent changes its value, this means that an action is performed
+                prossible_performed_actions = list()
+
+                # Check fluent changes its value, this means that an action is performed
                 for action in self.actions:
 
-                    # check if the fluent is a precondition of the action
+                    # Check fluent is a precondition of the action
                     if fluent in action.condition:
 
-                        # check if the fluent is deleted by the action
-                        # !!!!! piu di un elemento
-                        for i in range(len(action.del_effects)):
-                            if fluent in action.del_effects[i]:
+                        # Check fluent is deleted by the action
+                        for effects in action.del_effects:
+                            if fluent == effects[1]:
 
                                 fluent_swap = 1
+                                # Save action changing value of the fluent
                                 prossible_performed_actions.append(self.formula_mgr.mkVar(self.action_variables[step][str(action.name)]))
+                                break
 
+                # Same fluent at two adjacent steps
                 f_step = self.formula_mgr.mkVar(self.boolean_variables[step][str(fluent)])
                 f_stepplus1 = self.formula_mgr.mkVar(self.boolean_variables[step+1][str(fluent)])
 
+                # Double implication between same fluent at two adjacent steps
+                right_implication = self.formula_mgr.mkImply(f_step, f_stepplus1)
+                left_implication = self.formula_mgr.mkImply(f_stepplus1, f_step)
+
+                adjacent_fluents = self.formula_mgr.mkAnd(left_implication, right_implication)
+
+                # If the value of a fluent can change its value due to an action
                 if fluent_swap:
-                    # if f changes value in two adjacent steps
-                    adjacent_fluents = self.formula_mgr.mkAnd(f_step, f_stepplus1)
+
+                    # Negation of double implication (value changes) implies at least one action is performed
+                    negation_adjacent_fluents = self.formula_mgr.mkNot(adjacent_fluents)
+                    # OR of all actions that change the value of that fluent (at least one)
                     atleastone_action = self.formula_mgr.mkOrArray(prossible_performed_actions)
-                    frame.append(self.formula_mgr.mkImply(self.formula_mgr.mkVar(adjacent_fluents, atleastone_action)))
+
+                    frame.append(self.formula_mgr.mkImply(negation_adjacent_fluents, atleastone_action))
+
                 else:
-                    frame.append(self.formula_mgr.mkImply(f_step, f_stepplus1))
-                    frame.append(self.formula_mgr.mkImply(f_stepplus1, f_step))
+                    # Fluent cannot change its value
+                    frame.append(self.formula_mgr.mkVar(self.boolean_variables[step][str(fluent)]))
 
         return self.formula_mgr.mkAndArray(frame)
 
@@ -308,7 +323,8 @@ class Encoder():
         try:
             return self.modifier.do_encode(self.action_variables, self.horizon)
         except:
-            return self.modifier.do_encode(self.action_variables, self.mutexes, self.horizon)
+            return self.modifier.do_encode(self.action_variables, self.horizon, self.mutexes)
+
 
     def encodeAtLeastOne(self):
 
@@ -359,19 +375,20 @@ class Encoder():
         formula['frame'] = self.encodeFrame()
 
         # Encode execution semantics (lin/par)
-
-        formula['sem'] = self.encodeExecutionSemantics()
+        # TODO
+        # formula['sem'] = self.encodeExecutionSemantics()
 
         # Encode at least one axioms
 
         formula['alo'] = self.encodeAtLeastOne()
 
-        # mettere tutto in AND (devono essere tutte vere)
-        # chiamo formula manager dentro formula
-        # M: ciclo su tutta lista formula
-        # mkAnd
+        # Put the values of the dictionary in a list
+        planning_list = [v for v in formula.values()]
 
-        return formula
+        # Build planning formula
+        planning_formula = self.formula_mgr.mkAndArray(planning_list)
+
+        return planning_formula
 
     def dump(self):
         print('Dumping encoding')

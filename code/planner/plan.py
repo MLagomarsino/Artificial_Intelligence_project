@@ -1,6 +1,6 @@
 import utils
 import subprocess
-from CDCL_solver.dpll import Solver
+from CDCL_solver.cdcl import Solver
 
 class Plan():
     def __init__(self, model, encoder):
