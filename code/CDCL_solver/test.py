@@ -8,7 +8,7 @@ Created on Mon May  6 10:46:20 2019
 import sys
 
 from formula import Formula
-from dpll import Solver
+from cdcl import Solver
 from heuristics import RandomHeuristic, PureMomsHeuristic, VsidsHeuristic
 
 def test_random(inputFile):

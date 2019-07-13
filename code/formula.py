@@ -1,10 +1,11 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 """
 Created on Mon May 20 22:37:49 2019
 
 @author: tac
 """
+from __future__ import print_function
 
 from enum import Enum
 
@@ -19,8 +20,8 @@ class Operator(Enum):
 
 class Node:
 
-    def __init__(self, nodeid, op=None, left=None, right=None, label=None):
-        self.id = nodeid  # Unique node id
+    def __init__(self, node_id, op=None, left=None, right=None, label=None):
+        self.id = node_id  # Unique node id
         self.op = op  # None if it is a variable
         self.left = left  # left operand
         self.right = right  # right operand
@@ -29,7 +30,7 @@ class Node:
 
     # Variables (op == None) are hashed according to their id
     # Expressions (op != None) are hashed according to children and operator
-    # This enables sub-formula sharing
+    # This enables subformula sharing
     def __hash__(self):
         base = 17
         if self.op is None:
@@ -43,19 +44,19 @@ class Node:
         return base
 
     # Variables (op == None) are equal when they have the same id
-    # Expressions (op != None) are equal according to children and operator
+    # Epressions (op != None) are equal according to children and operator
     def __eq__(self, other):
         result = self.__class__ == other.__class__
         if self.op is None:
             return result and self.id == other.id
         else:
             return result and \
-                   self.op is other.op and \
-                   self.left.id is other.left.id and \
-                   self.right is None or self.right.id is other.right.id
+                   self.op == other.op and \
+                   self.left.id == other.left.id and \
+                   (self.right is None or self.right.id == other.right.id)
 
-    def do_print(self, print_id=False):
-        # Internal function to print IDs
+    def do_print(self, print_id=False, print_label=False):
+        # Internal function to prinr IDs
         def get_id(i, flag):
             if flag:
                 return ":" + str(i)
@@ -63,24 +64,28 @@ class Node:
                 return ""
 
         if self.op is None:
-            print("v" + str(self.id)),
+            if print_label and self.label is not None:
+                print(str(self.label), end=' ')
+            else:
+                print("v" + str(self.id), end=' ')
         else:
-            print("("+ self.op + get_id(self.id, print_id)+" "),  # delete self.op.name
+            print("(" + self.op.name + get_id(self.id, print_id), end=' ')
             if self.left is not None:
-                self.left.do_print(print_id)
-
+                self.left.do_print(print_id, print_label)
+            print("", end=' ')
             if self.right is not None:
-                self.right.do_print(print_id)
-            print(")"),
+                self.right.do_print(print_id, print_label)
+            print(")", end=' ')
 
 
 class FormulaMgr:
 
     def __init__(self):
-        self.lastId = -1
+        self.lastId = 0
         self.recycleIds = list()  # When deleting a node, recycle the unique id
         self.node2id = dict()  # Get node id from node
         self.id2node = list()  # Get node from node id
+        self.id2node.append(None)
         self.name2id = dict()  # Get node id from label (labels must be unique)
 
     # Get a new id or recycle one
@@ -103,32 +108,28 @@ class FormulaMgr:
                 self.dispose(node.left)
             if node.right is not None:
                 self.dispose(node.right)
-            # TODO : coding according to label (not ID)
-            """
             # If the node has a label, remove it from the index
             if node.label is not None:
-                self.name2id.pop(node.label)                           # MARTA
-
+                self.name2id.pop(node.label)
             # Remove the node from all other indexes
             self.node2id.pop(node)
             self.id2node[node.id] = None
             # The id can be recycled
             self.recycleIds.append(node.id)
-            """
 
     # Make a variable. The id is assigned by the manager, the
     # label can be chosen by the user. The label must be unique
     def mkVar(self, name=None):
         if name is not None:
-            nodeid = self.name2id.get(name)
-            if nodeid is not None:
-                return self.id2node[nodeid]
-        nodeid = self.getId()
-        node = Node(nodeid, label=name)
-        self.node2id[node] = nodeid
-        self.id2node[nodeid] = node
+            node_id = self.name2id.get(name)
+            if node_id is not None:
+                return self.id2node[node_id]
+        node_id = self.getId()
+        node = Node(node_id, label=name)
+        self.node2id[node] = node_id
+        self.id2node[node_id] = node
         if name is not None:
-            self.name2id[name] = nodeid
+            self.name2id[name] = node_id
         return node
 
     # Get the variable node using the label as a reference
@@ -149,12 +150,12 @@ class FormulaMgr:
     def mkOp(self, temp):
         nodeid = self.node2id.get(temp)
         if nodeid is not None:
-            # If the sub-formula was already created, share it
+            # If the subformula was already created, share it
             node = self.id2node[nodeid]
             node.refcount += 1
             return node
         else:
-            # Create a new sub-formula node
+            # Create a new subformula node
             nodeid = self.getId()
             temp.id = nodeid
             self.id2node[nodeid] = temp
@@ -177,26 +178,37 @@ class FormulaMgr:
         temp = Node(0, op=Operator.IMP, left=f, right=g)
         return self.mkOp(temp)
 
-    # Operator for working with lists (Recursive function)
-    def mkOpArray(self, lit_list, op):
-        assert (len(lit_list) != 0)
-        # Save the length of the list
-        len_list = len(lit_list)
+    # Create a <op> between all the elements in the var_list, balancing the tree at best
+    def mkOpArray(self, var_list, op):
+        assert (len(var_list) != 0)
+        len_list = len(var_list)
         if len_list == 1:
-            return lit_list[0]
-        # Create a balanced tree
-        left_half = self.mkOpArray(lit_list[0:len_list / 2], op)
-        right_half = self.mkOpArray(lit_list[len_list / 2:len_list], op)
-        temp = Node(0, op=op, left=left_half, right=right_half)
+            return var_list[0]
+        left = self.mkOpArray(var_list[0:len_list / 2], op)
+        right = self.mkOpArray(var_list[len_list / 2:len_list], op)
+        temp = Node(0, op=op, left=left, right=right)
         return self.mkOp(temp)
 
-    # AND among all the elements in the lit_list
-    def mkAndArray(self, lit_list):
-        return self.mkOpArray(lit_list, Operator.AND)
+    # Create a AND between all the elements in the var_list
+    def mkAndArray(self, var_list):
+        return self.mkOpArray(var_list, Operator.AND)
 
-    # OR among all the elements in the lit_list
-    def mkOrArray(self, lit_list):
-        return self.mkOpArray(lit_list, Operator.OR)
+    # Create a OR between all the elements in the var_list
+    def mkOrArray(self, var_list):
+        return self.mkOpArray(var_list, Operator.OR)
+
+    # Create a list of variables from a list of literals. In case the literal is negative,
+    # it create the var and returns the NOT of the variable
+    def mkVarArray(self, names_list):
+        assert (len(names_list) != 0)
+
+        ret_list = []
+        for v in names_list:
+            if v < 0:
+                ret_list.append(self.mkNot(self.mkVar(-v)))
+            else:
+                ret_list.append(self.mkVar(v))
+        return ret_list
 
 
 class NnfConversion:
@@ -215,7 +227,6 @@ class NnfConversion:
         return node
 
     def convert(self, node, polarity):
-        # TODO : coding according to label (not ID)
         if node.op is None:
             if polarity > 0:
                 return node
@@ -282,10 +293,10 @@ class CnfConversion:
         # Fail if the formula is not in NNF
         assert (node.op != Operator.NOT) or (node.left.op is None)
         # Nothing to do if a literal is reached (variable or negation thereof) 
-        if (node.op is None) or (node.op == Operator.NOT):                          ##!!!!!
+        if (node.op is None) or (node.op == Operator.NOT):
             return
         # An operator: AND, OR, IMP: add the definitions and propagate 
-        # If the sub-formula was already visited, no need to visit again
+        # If the subformula was already visited, no need to visit again
         self.add_definitions(node)
         if self.definitions.get(node.left.id) is None:
             self.convert(node.left)
@@ -300,20 +311,18 @@ class CnfConversion:
         l = node.id
         # The literal corresponding to the left operand
         # Negations must be applied to variables only
-        if node.left.op is Operator.NOT:
+        if node.left.op == Operator.NOT:
             assert (node.left.left.op is None)
             l1 = neg(node.left.left.id)
         else:
             l1 = node.left.id
-
         # The literal corresponding to the right operand
         # Negations must be applied to variables only
         if node.right.op == Operator.NOT:
-            assert (node.right.left.op == None)
+            assert (node.right.left.op is None)
             l2 = neg(node.right.left.id)
         else:
             l2 = node.right.id
-
         if node.op == Operator.AND:
             def_clauses.append([l, neg(l1), neg(l2)])
             def_clauses.append([neg(l), l1])
@@ -326,92 +335,11 @@ class CnfConversion:
             def_clauses.append([neg(l), neg(l1), l2])
             def_clauses.append([l, l1])
             def_clauses.append([l, neg(l2)])
-            pass
         else:
             # This cannot happen
-            assert True
+            assert False
         self.definitions[node.id] = def_clauses
         self.clauses.extend(def_clauses)
 
     def neg(self, id):
         return int(id * -1)
-
-
-if __name__ == "__main__":
-    mgr = FormulaMgr()
-    # Test creation of variables
-    v1 = mgr.mkVar()
-    v2 = mgr.mkVar()
-    v3 = mgr.mkVar()
-    # Test creation of formulas
-    print(" f:")
-    f = mgr.mkAnd(v1, v2)
-    f.do_print()
-    f_not = mgr.mkNot(f)
-    print("\n g:")
-    g = mgr.mkOr(v1, v2)
-    g.do_print()
-    g_not = mgr.mkNot(g)
-    print("\n h:")
-    h = mgr.mkImply(v1, v2)
-    h.do_print()
-    h_not = mgr.mkNot(h)
-    s = mgr.mkOr(g, h)
-    s = mgr.mkOr(f, s)
-    s_not = mgr.mkNot(s)
-    print("\n s:")
-    s.do_print()
-    print("\n s (neg):")
-    s_not.do_print()
-    s_not_not = mgr.mkNot(s_not)
-    print("\n s (neg, neg):")
-    s_not_not.do_print()
-    print("\n")
-
-    # Test negation normal form
-    nnfize = NnfConversion(mgr)
-    f_nnf = nnfize.do_conversion(f)
-    print("\n f_nnf:")
-    f_nnf.do_print()
-    f_nnf = nnfize.do_conversion(f_not)
-    print("\n f_nnf (neg):")
-    f_nnf.do_print()
-    g_nnf = nnfize.do_conversion(g)
-    print("\n g_nnf:")
-    g_nnf.do_print()
-    g_nnf = nnfize.do_conversion(g_not)
-    print("\n g_nnf (neg):")
-    g_nnf.do_print()
-    print("\n h_nnf:")
-    h_nnf = nnfize.do_conversion(h)
-    h_nnf.do_print()
-    h_nnf = nnfize.do_conversion(h_not)
-    print("\n h_nnf (neg):")
-    h_nnf.do_print()
-    s_nnf = nnfize.do_conversion(s)
-    print("\n s_nnf:")
-    s_nnf.do_print()
-    s_nnf = nnfize.do_conversion(s_not)
-    print("\n s_nnf (neg):")
-    s_nnf.do_print()
-    s_nnf = nnfize.do_conversion(s_not_not)
-    print("\n s_nnf (neg,neg):")
-    s_nnf.do_print()
-    print("\n")
-
-    # Test CNF conversion
-    cnfize_s = CnfConversion(mgr)
-    cnfize_s.do_conversion(s)
-    print("\n s (with ids)")
-    s.do_print(True)
-    print("\n s in CNF:")
-    print(cnfize_s.get_clauses())
-
-    # Test CNF conversion with repeated sub-formulas
-    r = mgr.mkAnd(s, s)
-    cnfize_r = CnfConversion(mgr)
-    cnfize_r.do_conversion(r)
-    print("\n r (with ids)")
-    r.do_print(True)
-    print("\n r in CNF:")
-    print(cnfize_r.get_clauses())

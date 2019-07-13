@@ -6,12 +6,14 @@ Created on Mon Apr  3 11:23:30 2017
 @author: tac
 """
 
+
 class Variable:
 
     def __init__(self):
         self.value = 0
         self.pos_lits = list()
         self.neg_lits = list()
+
 
 class Clause:
 
@@ -20,10 +22,12 @@ class Clause:
         self.subsumer = 0
         self.lit_list = lit_list[:]
 
+
 class Conflict:
     def __init__(self):
         self.pos = 0
         self.neg = 0
+
 
 class Formula:
     # open_var       the number of open (unassigned) variables

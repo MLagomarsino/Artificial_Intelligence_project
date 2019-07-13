@@ -3,9 +3,9 @@ from planner import encoder
 from planner.plan import Plan
 import utils
 
-from CDCL_solver.formula import Formula
-from CDCL_solver.cdcl import Solver
-from CDCL_solver.heuristics import RandomHeuristic, PureMomsHeuristic
+from cdcl_solver.formula import Formula
+from cdcl_solver.cdcl import Solver
+from cdcl_solver.heuristics import RandomHeuristic, PureMomsHeuristic
 
 from formula import FormulaMgr, NnfConversion, CnfConversion
 
@@ -45,7 +45,7 @@ class LinearSearch(Search):
             #print(formula_cnf.get_clauses())
 
             # TODO
-            final_formula.set_cnf(self.encoder.inverse.__len__(), [[45,46],[56,50]])# formula_cnf.clauses)
+            final_formula.set_cnf(self.encoder.inverse.__len__(), formula_cnf.clauses)#[[45,46],[56,50]]
 
             # Solve the built formula using CDCL solver (Random Heuristic)
             h = PureMomsHeuristic(True)

@@ -386,7 +386,7 @@ class Encoder():
         planning_list = [v for v in formula.values()]
 
         # Build planning formula
-        planning_formula = self.formula_mgr.mkAndArray(planning_list)
+        planning_formula = formula['goal']#self.formula_mgr.mkAndArray(planning_list)
 
         return planning_formula
 
