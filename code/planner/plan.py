@@ -20,7 +20,7 @@ class Plan():
             # Inverse translation: from number to action
             variable = encoder.inverse[abs(lit)]
 
-            print(str(sign) + " " + variable)
+            #print(str(sign) + " " + variable)
 
             # Check number corresponds to an action (not to a fluent)
             for action in encoder.action_variables:

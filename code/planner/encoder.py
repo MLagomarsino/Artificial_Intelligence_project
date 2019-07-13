@@ -285,10 +285,11 @@ class Encoder():
         """
         Encode explanatory frame axioms
         """
-        frame = []
+        all_fluents = []
 
-        for step in range(self.horizon):
+        for step in range(self.horizon-1): # -1 GIUSTO???
 
+            frame = list()
             # Encode frame axioms for boolean fluents
             for fluent in self.boolean_fluents:
 
@@ -325,16 +326,20 @@ class Encoder():
 
                     # Negation of double implication (value changes) implies at least one action is performed
                     negation_adjacent_fluents = self.formula_mgr.mkNot(adjacent_fluents)
+
                     # OR of all actions that change the value of that fluent (at least one)
                     atleastone_action = self.formula_mgr.mkOrArray(prossible_performed_actions)
 
                     frame.append(self.formula_mgr.mkImply(negation_adjacent_fluents, atleastone_action))
-                """
+
                 else:
+                    # TODO
                     # Fluent cannot change its value            ????????????????????????????????????????????????serve?
-                    frame.append(self.formula_mgr.mkVar(self.boolean_variables[step][str(fluent)]))
-                """
-        return self.formula_mgr.mkAndArray(frame)
+                    frame.append(self.formula_mgr.mkOr(f_step, self.formula_mgr.mkNot(f_step)))
+
+            all_fluents.append(self.formula_mgr.mkAndArray(frame))
+
+        return self.formula_mgr.mkAndArray(all_fluents)
 
     def encodeExecutionSemantics(self):
 
@@ -346,8 +351,8 @@ class Encoder():
 
     def encodeAtLeastOne(self):
 
-        atleastone_forstep = []
-        atleastone = []
+        atleastone_forstep = list()
+        atleastone = list()
 
         for step in range(self.horizon):
 
@@ -394,7 +399,7 @@ class Encoder():
         formula['actions'] = self.encodeActions()
 
         # Encode explanatory frame axioms
-
+        # TODO : check
         formula['frame'] = self.encodeFrame()
 
         # Encode execution semantics (lin/par)
