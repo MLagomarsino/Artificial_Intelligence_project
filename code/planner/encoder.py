@@ -360,6 +360,7 @@ class Encoder():
 
         # Encode initial state axioms
 
+        self.formula_mgr = FormulaMgr()
         formula['initial'] = self.encodeInitialState()
 
         # Encode goal state axioms
@@ -376,19 +377,21 @@ class Encoder():
 
         # Encode execution semantics (lin/par)
         # TODO : check
-        formula['sem'] = self.encodeExecutionSemantics()
+        #formula['sem'] = self.encodeExecutionSemantics()
 
         # Encode at least one axioms
 
         formula['alo'] = self.encodeAtLeastOne()
 
         # Put the values of the dictionary in a list
-        planning_list = [v for v in formula.values()]
+        # planning_list = [v for v in formula.values()]
+        planning_list = [formula['initial']]
+        # planning_list = [formula['goal']]
+        # planning_list = [formula['actions']]
+        # planning_list = [formula['frame']]
 
         # Build planning formula
-        planning_formula = formula['goal']#self.formula_mgr.mkAndArray(planning_list)
-
-        return planning_formula
+        return self.formula_mgr.mkAndArray(planning_list)
 
     def dump(self):
         print('Dumping encoding')

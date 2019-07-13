@@ -26,6 +26,10 @@ class Node:
         self.left = left  # left operand
         self.right = right  # right operand
         self.label = label  # an optional label (could be handy for encodings)
+        if left is not None:
+            left.refcount += 1
+        if right is not None:
+            right.refcount += 1
         self.refcount = 0  # reference count for garbage collection
 
     # Variables (op == None) are hashed according to their id
@@ -293,7 +297,7 @@ class CnfConversion:
         # Fail if the formula is not in NNF
         assert (node.op != Operator.NOT) or (node.left.op is None)
         # Nothing to do if a literal is reached (variable or negation thereof) 
-        if (node.op is None) or (node.op == Operator.NOT):
+        if (node.op is None) or (node.op == Operator.NOT):                         #MARTAAAA
             return
         # An operator: AND, OR, IMP: add the definitions and propagate 
         # If the subformula was already visited, no need to visit again
@@ -343,3 +347,33 @@ class CnfConversion:
 
     def neg(self, id):
         return int(id * -1)
+
+    # Marta
+    def do_id2label(self, clauses, formula_mgr):
+        formula_clauses = list(list())
+        flag = 0
+        counter = 0
+
+        for cl in clauses:
+            clause = list()
+            number_lits = len(cl)
+
+            for lit in cl:
+
+                node = formula_mgr.getVarById(abs(lit))
+                if node.op is None:
+                    #flag = 1
+                    counter += 1
+                    # Check if negated or not
+                    neg = lit / abs(lit)
+                    if neg == 1:
+                        clause.append(node.label)
+                    else:
+                        clause.append(-node.label)
+            if counter == number_lits:
+            #if flag == 1:
+                formula_clauses.append(clause)
+                counter = 0
+                #flag = 0
+
+        return formula_clauses

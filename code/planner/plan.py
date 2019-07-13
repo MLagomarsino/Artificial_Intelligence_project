@@ -15,16 +15,20 @@ class Plan():
         # Extract plan for model
         for lit in model:
 
+            sign = lit/abs(lit)
+
             # Inverse translation: from number to action
-            variable = str(encoder.inverse[lit])
+            variable = encoder.inverse[abs(lit)]
+
+            print(str(sign) +" "+ variable)
 
             # Check number corresponds to an action (not to a fluent)
             for action in encoder.action_variables:
 
-                temp = encoder.action_variables[action].values()
                 if lit in encoder.action_variables[action].values():
                     # Add action in the list of plan actions
-                    plan.append(str(encoder.inverse[lit]))
+                    if sign == 1:
+                        plan.append(encoder.inverse[lit]) # !!!!
 
         return plan
 
