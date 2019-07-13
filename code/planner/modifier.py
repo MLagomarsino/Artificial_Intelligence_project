@@ -1,5 +1,4 @@
-from encoder import Encoder
-from formula import FormulaMgr
+from itertools import combinations
 
 class Modifier():
 
@@ -8,14 +7,33 @@ class Modifier():
 
 class LinearModifier(Modifier):
 
-    def do_encode(self, variables, bound):
-        # M: add mutex
-        exor_actions = []
-        formula_mgr = FormulaMgr()
+    def do_encode(self, variables, bound, formula_mgr):
+
+        # Mutual exclusion
+        one_action = list()
+        #exor_actions = []
 
         # One action at each step
         for step in range(bound):
 
+            # At most one performed action
+            negated_couple = list()
+            # Pairs of actions
+            v = variables[step]
+            for action1, action2 in combinations(v.values(), 2):
+                # AND between pair of actions
+                action_couple = formula_mgr.mkVarArray([action1, action2])
+                AND_couple = formula_mgr.mkAndArray(action_couple)
+                # Negation
+                negated_couple.append(formula_mgr.mkNot(AND_couple))
+
+            # At least one performed (OR of all actions)
+            at_least = list()
+            at_least.append(formula_mgr.mkOrArray(formula_mgr.mkVarArray(v.values())))
+
+            one_action.append(formula_mgr.mkAndArray(at_least + negated_couple))
+
+            """
             for performed_action in variables[step]:
 
                 # Performed action
@@ -37,4 +55,6 @@ class LinearModifier(Modifier):
             # EXOR for each step
             exor_actions.append(formula_mgr.mkOrArray(all_actions))
 
-        return formula_mgr.mkAndArray(exor_actions)
+            return formula_mgr.mkAndArray(exor_actions)
+            """
+        return formula_mgr.mkAndArray(one_action)

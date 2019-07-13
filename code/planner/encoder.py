@@ -50,9 +50,33 @@ class Encoder():
         Temporal Fast-Downward planner
         """
 
-        (relaxed_reachable, boolean_fluents, numeric_fluents, actions,
+        (relaxed_reachable, bool_fluents, numeric_fluents, bool_actions,
          durative_actions, axioms, numeric_axioms,
          reachable_action_params) = instantiate.explore(self.task)
+
+        # TODO MARTAAAA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # Check consistency of fluents
+        boolean_fluents = set()
+
+        for fluent in bool_fluents:
+            number_arg = len(fluent.args)
+            if number_arg == 2:
+                # Check consistency of the fluent
+                a1 = fluent.args[0]
+                a2 = fluent.args[1]
+                if not a1 == a2:
+                    boolean_fluents.add(fluent)
+            else:
+                boolean_fluents.add(fluent)
+
+        # Check consistency of actions
+        # Avoid invalid actions such as (stack a a) -> same object
+        actions = list()
+        for action in bool_actions:
+            a_name = action.name[:-1].split(' ')
+
+            if not a_name[-1] == a_name[-2]:
+                actions.append(action)
 
         return boolean_fluents, actions, numeric_fluents, axioms, numeric_axioms
 
@@ -110,6 +134,7 @@ class Encoder():
         # level1 = steps ; level2 = fluents
         for step in range(self.horizon + 1):
             for fluent in self.boolean_fluents:
+
                 # Direct mapping: assign variable and increment the counter to obtain a unique identifier
                 self.boolean_variables[step][str(fluent)] = counter
                 counter += 1
@@ -120,6 +145,7 @@ class Encoder():
         # level1 = steps ; level2 = actions
         for step in range(self.horizon):
             for a in self.actions:
+
                 # Direct mapping
                 self.action_variables[step][a.name] = counter
                 counter += 1
@@ -255,14 +281,6 @@ class Encoder():
         # AND of all steps
         return self.formula_mgr.mkAndArray(actions)
 
-    """
-    a = impl(action, and(preconditions))
-    b = impl(action, and(add))
-    c = impl(action, and(not(del))
-    actions.append(and(a,b,c))
-    
-    return and(actions)
-    """
     def encodeFrame(self):
         """
         Encode explanatory frame axioms
@@ -321,9 +339,9 @@ class Encoder():
     def encodeExecutionSemantics(self):
 
         try:
-            return self.modifier.do_encode(self.action_variables, self.horizon)
+            return self.modifier.do_encode(self.action_variables, self.horizon, self.formula_mgr)
         except:
-            return self.modifier.do_encode(self.action_variables, self.horizon, self.mutexes)
+            return self.modifier.do_encode(self.action_variables, self.horizon, self.formula_mgr)#, self.mutexes)
 
 
     def encodeAtLeastOne(self):
@@ -332,9 +350,11 @@ class Encoder():
         atleastone = []
 
         for step in range(self.horizon):
+
             for action in self.actions:
                 action_code = self.action_variables[step][str(action.name)]
                 atleastone_forstep.append(self.formula_mgr.mkVar(action_code))
+
             # at least one action should be performed at each step -> OR of all variables of the step
             atleastone.append(self.formula_mgr.mkOrArray(atleastone_forstep))
 
@@ -358,9 +378,11 @@ class Encoder():
 
         formula = defaultdict(list)
 
+        # Formula Manager
+        self.formula_mgr = FormulaMgr()
+
         # Encode initial state axioms
 
-        self.formula_mgr = FormulaMgr()
         formula['initial'] = self.encodeInitialState()
 
         # Encode goal state axioms
@@ -377,18 +399,18 @@ class Encoder():
 
         # Encode execution semantics (lin/par)
         # TODO : check
-        #formula['sem'] = self.encodeExecutionSemantics()
+        formula['sem'] = self.encodeExecutionSemantics()
 
         # Encode at least one axioms
 
         formula['alo'] = self.encodeAtLeastOne()
 
         # Put the values of the dictionary in a list
-        # planning_list = [v for v in formula.values()]
-        planning_list = [formula['initial']]
+        planning_list = [v for v in formula.values()]
+        # planning_list = [formula['initial']]
         # planning_list = [formula['goal']]
         # planning_list = [formula['actions']]
-        # planning_list = [formula['frame']]
+        #planning_list = [formula['frame']]
 
         # Build planning formula
         return self.formula_mgr.mkAndArray(planning_list)

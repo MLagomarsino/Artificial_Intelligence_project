@@ -38,11 +38,12 @@ class LinearSearch(Search):
             formula_cnf = CnfConversion(self.encoder.formula_mgr)
             formula_cnf.do_conversion(formula_nnf)
 
-            # TODO
-            final_formula.set_cnf(400000, formula_cnf.clauses) # self.encoder.inverse.__len__()
+            num_id = formula_cnf.clauses[0][0]
+            final_formula.set_cnf(num_id, formula_cnf.clauses)
+            # self.encoder.inverse.__len__()*len(formula_cnf.clauses)
 
             # Solve the built formula using CDCL solver (Random Heuristic)
-            h = PureMomsHeuristic(True)
+            h = RandomHeuristic()
             s = Solver(final_formula, h, True)
 
             solution = s.run()
@@ -50,9 +51,13 @@ class LinearSearch(Search):
             # Conversion from id to label
             sol = list()
             for lit in solution:
+                sign = lit/abs(lit)
                 node = self.encoder.formula_mgr.getVarById(abs(lit))
                 if node.op is None:
-                    sol.append(node.label)
+                    if sign == 1:
+                        sol.append(node.label)
+                    else:
+                        sol.append(-node.label)
 
             if not sol:
                 # Increase horizon
