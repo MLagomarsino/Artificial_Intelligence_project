@@ -9,6 +9,7 @@ from cdcl_solver.cdcl import Solver
 class Plan():
     def __init__(self, model, encoder):
         self.plan = self.extractPlan(model, encoder)
+        self.cost = encoder.horizon
 
     def extractPlan(self, model, encoder):
         """
@@ -47,8 +48,7 @@ class Plan():
 
         for action in self.plan:
 
-            #print(action[1] + " @" + str(action[0]))
-            print(action + str(self.plan[action]))
+            print(action[1] + " @ " + str(action[0]))
 
         print(" ")
 
