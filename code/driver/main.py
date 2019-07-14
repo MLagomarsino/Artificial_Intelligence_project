@@ -62,6 +62,15 @@ def main(BASE_DIR):
 
     # Validate and print plan
 
+    if plan.validate(val, domain, prb):
+        print('\nPlan found!')
+        print('\nCost: {}\n'.format(plan.cost))
+        for k, v in plan.plan.items():
+            print('Step {}: {}'.format(k, v))
+    else:
+        print('Plan not valid, exiting now...')
+        sys.exit()
+
     try:
         if plan.validate(val, domain, prb):
             print('\nPlan found!')

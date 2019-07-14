@@ -68,10 +68,12 @@ class LinearSearch(Search):
                 print("\nThe PLAN is found!")
 
                 # Create a Plan object
+                #plan = Plan(sol, self.encoder)
+
                 problem_plan = Plan(sol, self.encoder)
 
                 # Print plan
-                problem_plan.do_print()
+                #problem_plan.do_print()
                 break
 
         # Return a plan object

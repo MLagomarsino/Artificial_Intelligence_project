@@ -3,6 +3,7 @@ import collections
 import operator
 import utils
 import subprocess
+import sys
 from cdcl_solver.cdcl import Solver
 
 class Plan():
@@ -13,12 +14,13 @@ class Plan():
         """
         Extract linear plan from model of the formula
         """
-        plan = defaultdict(list)
+        plan = []
+        #plan = defaultdict(list)
 
         # Remove negative elements from the list
         model = [item for item in model if item >= 0]
         # Sort the list in ascending order
-        #model.sort()
+        model.sort()
 
         # Extract plan for model
         for lit in model:
@@ -30,12 +32,14 @@ class Plan():
                     # Inverse translation: from number to action
                     variable = encoder.inverse[lit]
                     # Add action in the list of plan actions
-                    #plan.update({variable[0]: variable[1]})
-                    plan[variable[0]].append(variable[1])
+                    plan.append([variable[1], variable[0]])
+                    #plan[variable[0]].append(variable[1])
 
-        plan_ordered = collections.OrderedDict(sorted(plan.items(), key=operator.itemgetter(1)))
+        #plan_ordered = collections.OrderedDict(sorted(plan.items(), key=operator.itemgetter(1)))
 
-        return plan_ordered
+        #return plan_ordered
+
+        return plan
 
     def do_print(self):
 
@@ -43,6 +47,7 @@ class Plan():
 
         for action in self.plan:
 
+            #print(action[1] + " @" + str(action[0]))
             print(action + str(self.plan[action]))
 
         print(" ")
@@ -53,7 +58,10 @@ class Plan():
 
         print('Validating plan...')
 
-        plan_to_str = '\n'.join('{}: {}'.format(key, val) for key, val in self.plan.items())
+        plan_to_str = ""
+        for step in self.plan:
+            plan_to_str += str(step[0]) + ":" + str(step[1]) + "\n"
+        #"'\n'.join('{}: {}'.format(key, val) for key, val in self.plan.items())
 
         with NamedTemporaryFile(mode='w+') as temp:
 
