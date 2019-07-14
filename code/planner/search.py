@@ -70,6 +70,7 @@ class LinearSearch(Search):
                 # Create a Plan object
                 problem_plan = Plan(sol, self.encoder)
 
+                # Print plan
                 problem_plan.do_print()
                 break
 

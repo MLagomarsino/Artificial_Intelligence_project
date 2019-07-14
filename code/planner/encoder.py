@@ -139,7 +139,8 @@ class Encoder():
                 self.boolean_variables[step][str(fluent)] = counter
                 counter += 1
                 # Inverse mapping
-                self.inverse.append(str(fluent) + "@" + str(step))
+                self.inverse.append((str(fluent), step))
+                #self.inverse.append(str(fluent) + "@" + str(step))
 
         # a dictionary of 2 levels is created:
         # level1 = steps ; level2 = actions
@@ -150,7 +151,8 @@ class Encoder():
                 self.action_variables[step][a.name] = counter
                 counter += 1
                 # Inverse mapping
-                self.inverse.append(str(a.name) + "@" + str(step))
+                self.inverse.append((str(a.name), step))
+                #self.inverse.append(str(a.name) + "@" + str(step))
 
     def encodeInitialState(self):
         """
@@ -285,57 +287,96 @@ class Encoder():
         """
         Encode explanatory frame axioms
         """
+
         all_fluents = []
 
-        for step in range(self.horizon-1): # -1 GIUSTO???
+        actions_deliting = defaultdict(list)
+        actions_adding = defaultdict(list)
 
+        # Check fluent can change its value due to an action
+        for fluent in self.boolean_fluents:
+
+            swap_pos2neg = 0
+            swap_neg2pos = 0
+
+            # Check fluent changes its value, this means that an action is performed
+            for action in self.actions:
+
+                # Check fluent is added by an action
+                for add_e in action.add_effects:
+                    if fluent == add_e[1]:
+                        swap_neg2pos = 1
+                        # Save action changing value of the fluent from negative to positive
+                        actions_adding[fluent].append(action.name)
+                        break
+
+                # Check fluent is a precondition of the action
+                if fluent in action.condition:
+
+                    # Check fluent is deleted by the action
+                    for del_e in action.del_effects:
+                        if fluent == del_e[1]:
+                            swap_pos2neg = 1
+                            # Save action changing value of the fluent from positive to negative
+                            actions_deliting[fluent].append(action.name)
+                            break
+
+        for step in range(self.horizon):
             frame = list()
-            # Encode frame axioms for boolean fluents
+
             for fluent in self.boolean_fluents:
 
-                fluent_swap = 0
-                prossible_performed_actions = list()
-
-                # Check fluent changes its value, this means that an action is performed
-                for action in self.actions:
-
-                    # Check fluent is a precondition of the action
-                    if fluent in action.condition:
-
-                        # Check fluent is deleted by the action
-                        for effects in action.del_effects:
-                            if fluent == effects[1]:
-
-                                fluent_swap = 1
-                                # Save action changing value of the fluent
-                                prossible_performed_actions.append(self.formula_mgr.mkVar(self.action_variables[step][str(action.name)]))
-                                break
+                pos_performed_actions = list()
+                neg_performed_actions = list()
 
                 # Same fluent at two adjacent steps
                 f_step = self.formula_mgr.mkVar(self.boolean_variables[step][str(fluent)])
-                f_stepplus1 = self.formula_mgr.mkVar(self.boolean_variables[step+1][str(fluent)])
+                f_stepplus1 = self.formula_mgr.mkVar(self.boolean_variables[step + 1][str(fluent)])
 
-                # Double implication between same fluent at two adjacent steps
-                right_implication = self.formula_mgr.mkImply(f_step, f_stepplus1)
-                left_implication = self.formula_mgr.mkImply(f_stepplus1, f_step)
+                if not swap_neg2pos:
+                    # If fluent is false at step i is false also at step i+1
 
-                adjacent_fluents = self.formula_mgr.mkAnd(left_implication, right_implication)
+                    # Negation of fluent at current step
+                    not_f_step = self.formula_mgr.mkNot(f_step)
+                    # Negation of fluent at following step
+                    not_f_stepplus1 = self.formula_mgr.mkNot(f_stepplus1)
 
-                # If the value of a fluent can change its value due to an action
-                if fluent_swap:
-
-                    # Negation of double implication (value changes) implies at least one action is performed
-                    negation_adjacent_fluents = self.formula_mgr.mkNot(adjacent_fluents)
-
-                    # OR of all actions that change the value of that fluent (at least one)
-                    atleastone_action = self.formula_mgr.mkOrArray(prossible_performed_actions)
-
-                    frame.append(self.formula_mgr.mkImply(negation_adjacent_fluents, atleastone_action))
+                    frame.append(self.formula_mgr.mkImply(not_f_step, not_f_stepplus1))
 
                 else:
-                    # TODO
-                    # Fluent cannot change its value            ????????????????????????????????????????????????serve?
-                    frame.append(self.formula_mgr.mkOr(f_step, self.formula_mgr.mkNot(f_step)))
+                    # The fluent can be added by at least one action
+
+                    # Negation of fluent at following step
+                    not_f_step = self.formula_mgr.mkNot(f_step)
+
+                    # Value changes implies at least one action is performed
+                    adjacent_fluents = self.formula_mgr.mkAnd(not_f_step, f_stepplus1)
+
+                    # OR of all actions that change the value of that fluent (at least one)
+                    for act in actions_adding[fluent]:
+                        pos_performed_actions.append(self.formula_mgr.mkVar(self.action_variables[step][act]))
+                    atleastone_action = self.formula_mgr.mkOrArray(pos_performed_actions)
+
+                    frame.append(self.formula_mgr.mkImply(adjacent_fluents, atleastone_action))
+
+                if not swap_pos2neg:
+                    # If fluent is true at step i is true also at step i+1
+                    frame.append(self.formula_mgr.mkImply(f_step, f_stepplus1))
+                else:
+                    # The fluent can be delete by at least one action
+
+                    # Negation of fluent at following step
+                    not_f_stepplus1 = self.formula_mgr.mkNot(f_stepplus1)
+
+                    # Value changes implies at least one action is performed
+                    adjacent_fluents = self.formula_mgr.mkAnd(f_step, not_f_stepplus1)
+
+                    # OR of all actions that change the value of that fluent (at least one)
+                    for act in actions_deliting[fluent]:
+                        neg_performed_actions.append(self.formula_mgr.mkVar(self.action_variables[step][act]))
+                    atleastone_action = self.formula_mgr.mkOrArray(neg_performed_actions)
+
+                    frame.append(self.formula_mgr.mkImply(adjacent_fluents, atleastone_action))
 
             all_fluents.append(self.formula_mgr.mkAndArray(frame))
 
@@ -399,11 +440,11 @@ class Encoder():
         formula['actions'] = self.encodeActions()
 
         # Encode explanatory frame axioms
-        # TODO : check
+
         formula['frame'] = self.encodeFrame()
 
         # Encode execution semantics (lin/par)
-        # TODO : check
+
         formula['sem'] = self.encodeExecutionSemantics()
 
         # Encode at least one axioms
@@ -412,10 +453,6 @@ class Encoder():
 
         # Put the values of the dictionary in a list
         planning_list = [v for v in formula.values()]
-        # planning_list = [formula['initial']]
-        # planning_list = [formula['goal']]
-        # planning_list = [formula['actions']]
-        #planning_list = [formula['frame']]
 
         # Build planning formula
         return self.formula_mgr.mkAndArray(planning_list)

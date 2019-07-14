@@ -1,3 +1,6 @@
+from collections import defaultdict
+import collections
+import operator
 import utils
 import subprocess
 from cdcl_solver.cdcl import Solver
@@ -10,34 +13,37 @@ class Plan():
         """
         Extract linear plan from model of the formula
         """
-        plan = []
+        plan = defaultdict(list)
+
+        # Remove negative elements from the list
+        model = [item for item in model if item >= 0]
+        # Sort the list in ascending order
+        #model.sort()
 
         # Extract plan for model
         for lit in model:
-
-            sign = lit/abs(lit)
-
-            # Inverse translation: from number to action
-            variable = encoder.inverse[abs(lit)]
-
-            #print(str(sign) + " " + variable)
 
             # Check number corresponds to an action (not to a fluent)
             for action in encoder.action_variables:
 
                 if lit in encoder.action_variables[action].values():
+                    # Inverse translation: from number to action
+                    variable = encoder.inverse[lit]
                     # Add action in the list of plan actions
-                    if sign == 1:
-                        plan.append(encoder.inverse[lit])
+                    #plan.update({variable[0]: variable[1]})
+                    plan[variable[0]].append(variable[1])
 
-        return plan
+        plan_ordered = collections.OrderedDict(sorted(plan.items(), key=operator.itemgetter(1)))
+
+        return plan_ordered
 
     def do_print(self):
 
         print("Actions to perform for reaching the goal:")
 
         for action in self.plan:
-            print(" " + action)
+
+            print(action + str(self.plan[action]))
 
         print(" ")
 

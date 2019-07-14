@@ -61,6 +61,7 @@ def main(BASE_DIR):
     plan = s.do_search()
 
     # Validate and print plan
+
     try:
         if plan.validate(val, domain, prb):
             print('\nPlan found!')

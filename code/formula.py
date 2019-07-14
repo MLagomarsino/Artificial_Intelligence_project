@@ -182,37 +182,40 @@ class FormulaMgr:
         temp = Node(0, op=Operator.IMP, left=f, right=g)
         return self.mkOp(temp)
 
-    # Create a <op> between all the elements in the var_list, balancing the tree at best
-    def mkOpArray(self, var_list, op):
-        assert (len(var_list) != 0)
-        len_list = len(var_list)
+    # Operator for working with lists (Recursive function)
+    def mkOpArray(self, lit_list, op):
+        assert (len(lit_list) != 0)
+        # Save the length of the list
+        len_list = len(lit_list)
         if len_list == 1:
-            return var_list[0]
-        left = self.mkOpArray(var_list[0:len_list / 2], op)
-        right = self.mkOpArray(var_list[len_list / 2:len_list], op)
-        temp = Node(0, op=op, left=left, right=right)
+            return lit_list[0]
+        # Create a balanced tree
+        left_half = self.mkOpArray(lit_list[0:len_list / 2], op)
+        right_half = self.mkOpArray(lit_list[len_list / 2:len_list], op)
+        temp = Node(0, op=op, left=left_half, right=right_half)
         return self.mkOp(temp)
 
-    # Create a AND between all the elements in the var_list
-    def mkAndArray(self, var_list):
-        return self.mkOpArray(var_list, Operator.AND)
+    # List of variables from a list of literals
+    def mkVarArray(self, input_list):
+        assert (len(input_list) != 0)
 
-    # Create a OR between all the elements in the var_list
-    def mkOrArray(self, var_list):
-        return self.mkOpArray(var_list, Operator.OR)
-
-    # Create a list of variables from a list of literals. In case the literal is negative,
-    # it create the var and returns the NOT of the variable
-    def mkVarArray(self, names_list):
-        assert (len(names_list) != 0)
-
-        ret_list = []
-        for v in names_list:
-            if v < 0:
-                ret_list.append(self.mkNot(self.mkVar(-v)))
+        output_list = []
+        for lit in input_list:
+            # Check if negative
+            if lit < 0:
+                # Create variable and negate it
+                output_list.append(self.mkNot(self.mkVar(-lit)))
             else:
-                ret_list.append(self.mkVar(v))
-        return ret_list
+                output_list.append(self.mkVar(lit))
+        return output_list
+
+    # AND among all the elements in the lit_list
+    def mkAndArray(self, lit_list):
+        return self.mkOpArray(lit_list, Operator.AND)
+
+    # OR among all the elements in the lit_list
+    def mkOrArray(self, lit_list):
+        return self.mkOpArray(lit_list, Operator.OR)
 
 
 class NnfConversion:
