@@ -50,11 +50,10 @@ class Encoder():
         Temporal Fast-Downward planner
         """
 
-        (relaxed_reachable, bool_fluents, numeric_fluents, bool_actions,
+        (relaxed_reachable, boolean_fluents, numeric_fluents, actions,
          durative_actions, axioms, numeric_axioms,
          reachable_action_params) = instantiate.explore(self.task)
-
-        # TODO MARTAAAA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        """
         # Check consistency of fluents
         boolean_fluents = set()
 
@@ -77,7 +76,7 @@ class Encoder():
 
             if not a_name[-1] == a_name[-2]:
                 actions.append(action)
-
+        """
         return boolean_fluents, actions, numeric_fluents, axioms, numeric_axioms
 
     def sort_axioms(self):
@@ -293,11 +292,9 @@ class Encoder():
         actions_deliting = defaultdict(list)
         actions_adding = defaultdict(list)
 
+
         # Check fluent can change its value due to an action
         for fluent in self.boolean_fluents:
-
-            swap_pos2neg = 0
-            swap_neg2pos = 0
 
             # Check fluent changes its value, this means that an action is performed
             for action in self.actions:
@@ -305,7 +302,7 @@ class Encoder():
                 # Check fluent is added by an action
                 for add_e in action.add_effects:
                     if fluent == add_e[1]:
-                        swap_neg2pos = 1
+
                         # Save action changing value of the fluent from negative to positive
                         actions_adding[fluent].append(action.name)
                         break
@@ -316,7 +313,7 @@ class Encoder():
                     # Check fluent is deleted by the action
                     for del_e in action.del_effects:
                         if fluent == del_e[1]:
-                            swap_pos2neg = 1
+
                             # Save action changing value of the fluent from positive to negative
                             actions_deliting[fluent].append(action.name)
                             break
@@ -329,11 +326,19 @@ class Encoder():
                 pos_performed_actions = list()
                 neg_performed_actions = list()
 
+                swap_pos2neg = 0
+                swap_neg2pos = 0
+
+                if fluent in actions_adding:
+                    swap_neg2pos = 1
+                if fluent in actions_deliting:
+                    swap_pos2neg = 1
+
                 # Same fluent at two adjacent steps
                 f_step = self.formula_mgr.mkVar(self.boolean_variables[step][str(fluent)])
                 f_stepplus1 = self.formula_mgr.mkVar(self.boolean_variables[step + 1][str(fluent)])
 
-                if not swap_neg2pos:
+                if swap_neg2pos == 0:
                     # If fluent is false at step i is false also at step i+1
 
                     # Negation of fluent at current step
@@ -342,7 +347,6 @@ class Encoder():
                     not_f_stepplus1 = self.formula_mgr.mkNot(f_stepplus1)
 
                     frame.append(self.formula_mgr.mkImply(not_f_step, not_f_stepplus1))
-
                 else:
                     # The fluent can be added by at least one action
 
@@ -355,11 +359,15 @@ class Encoder():
                     # OR of all actions that change the value of that fluent (at least one)
                     for act in actions_adding[fluent]:
                         pos_performed_actions.append(self.formula_mgr.mkVar(self.action_variables[step][act]))
-                    atleastone_action = self.formula_mgr.mkOrArray(pos_performed_actions)
+
+                    if len(pos_performed_actions) > 1:
+                        atleastone_action = self.formula_mgr.mkOrArray(pos_performed_actions)
+                    else:
+                        atleastone_action = pos_performed_actions[0]
 
                     frame.append(self.formula_mgr.mkImply(adjacent_fluents, atleastone_action))
 
-                if not swap_pos2neg:
+                if swap_pos2neg == 0:
                     # If fluent is true at step i is true also at step i+1
                     frame.append(self.formula_mgr.mkImply(f_step, f_stepplus1))
                 else:
@@ -374,7 +382,11 @@ class Encoder():
                     # OR of all actions that change the value of that fluent (at least one)
                     for act in actions_deliting[fluent]:
                         neg_performed_actions.append(self.formula_mgr.mkVar(self.action_variables[step][act]))
-                    atleastone_action = self.formula_mgr.mkOrArray(neg_performed_actions)
+
+                    if len(neg_performed_actions) > 1:
+                        atleastone_action = self.formula_mgr.mkOrArray(neg_performed_actions)
+                    else:
+                        atleastone_action = neg_performed_actions[0]
 
                     frame.append(self.formula_mgr.mkImply(adjacent_fluents, atleastone_action))
 

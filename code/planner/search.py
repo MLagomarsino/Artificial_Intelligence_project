@@ -44,7 +44,7 @@ class LinearSearch(Search):
 
             # Solve the built formula using CDCL solver (Random Heuristic)
             h = RandomHeuristic()
-            s = Solver(final_formula, h, True)
+            s = Solver(final_formula, h)
 
             solution = s.run()
 
@@ -62,6 +62,7 @@ class LinearSearch(Search):
             if not sol:
                 # Increase horizon
                 self.horizon += 1
+                print("\nThe PLAN is not found!\n New horizon" + str(self.horizon))
 
             else:
                 # A plan is found
@@ -73,7 +74,7 @@ class LinearSearch(Search):
                 problem_plan = Plan(sol, self.encoder)
 
                 # Print plan
-                #problem_plan.do_print()
+                problem_plan.do_print()
                 break
 
         # Return a plan object
