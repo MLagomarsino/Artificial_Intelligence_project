@@ -5,7 +5,6 @@ from formula import FormulaMgr
 from translate import instantiate
 from translate import numeric_axiom_rules
 from collections import defaultdict
-import numpy as np
 
 
 class Encoder():
@@ -116,21 +115,18 @@ class Encoder():
         return mutexes
 
     def createVariables(self):
-        # First step of translation: FOL -> PL (Grounding)
+        # First step of translation: FOL -> PL
 
         # associate to each action or fluent an identifier (called counter)
         # store the mappings in a appropriate structure
 
         # create a dictionary of dictionaries:
-        # 1 level = step, 2 level = action or fluent
+        #  level1 = step, level2 = fluent or action
         # value of the couple of keys (of the two levels) is a number (unique for config)
-        # if a is a dictionary: a[0]["pickup a"]
 
         # unique counter to identify fluents and actions
         counter = 1
 
-        # a dictionary of 2 levels is created:
-        # level1 = steps ; level2 = fluents
         for step in range(self.horizon + 1):
             for fluent in self.boolean_fluents:
 
@@ -139,10 +135,7 @@ class Encoder():
                 counter += 1
                 # Inverse mapping
                 self.inverse.append((str(fluent), step))
-                #self.inverse.append(str(fluent) + "@" + str(step))
 
-        # a dictionary of 2 levels is created:
-        # level1 = steps ; level2 = actions
         for step in range(self.horizon):
             for a in self.actions:
 
@@ -151,7 +144,6 @@ class Encoder():
                 counter += 1
                 # Inverse mapping
                 self.inverse.append((str(a.name), step))
-                #self.inverse.append(str(a.name) + "@" + str(step))
 
     def encodeInitialState(self):
         """
@@ -199,18 +191,18 @@ class Encoder():
 
         # Check if goal is just a single atom
         if isinstance(goal, pddl.conditions.Atom):
-            if goal.predicate not in axiom_names: # ?? axiom name ??
-                # MARTA!! If the goal is in my list of variables associated to available fluents
+            if goal.predicate not in axiom_names:
+                # Check goal is in my list of variables associated to available fluents
                 if goal in self.boolean_fluents:
-                    propositional_subgoal.append(self.formula_mgr.mkVar(self.boolean_variables[self.horizon][str(goal)]))  # M
+                    propositional_subgoal.append(self.formula_mgr.mkVar(self.boolean_variables[self.horizon][str(goal)]))
 
         # Check if goal is a conjunction
         elif isinstance(goal, pddl.conditions.Conjunction):
             for fact in goal.parts:
-                # MARTA!! If the goal is in my list of variables associated to available fluents
+
                 if fact in self.boolean_fluents:
                     goal_index = self.boolean_variables[self.horizon][str(fact)]
-                    propositional_subgoal.append(self.formula_mgr.mkVar(goal_index))  # M
+                    propositional_subgoal.append(self.formula_mgr.mkVar(goal_index))
 
         else:
             raise Exception(
@@ -242,7 +234,7 @@ class Encoder():
                 preconditions = list()
                 for pre in action.condition:
                     if pre in self.boolean_fluents:
-                        preconditions.append(self.formula_mgr.mkVar(self.boolean_variables[step][str(pre)]))  # M
+                        preconditions.append(self.formula_mgr.mkVar(self.boolean_variables[step][str(pre)]))
 
                 # AND of all preconditions at step
                 allpreconditions = self.formula_mgr.mkAndArray(preconditions)
@@ -292,11 +284,9 @@ class Encoder():
         actions_deliting = defaultdict(list)
         actions_adding = defaultdict(list)
 
-
         # Check fluent can change its value due to an action
         for fluent in self.boolean_fluents:
 
-            # Check fluent changes its value, this means that an action is performed
             for action in self.actions:
 
                 # Check fluent is added by an action
@@ -347,6 +337,7 @@ class Encoder():
                     not_f_stepplus1 = self.formula_mgr.mkNot(f_stepplus1)
 
                     frame.append(self.formula_mgr.mkImply(not_f_step, not_f_stepplus1))
+
                 else:
                     # The fluent can be added by at least one action
 
@@ -356,7 +347,7 @@ class Encoder():
                     # Value changes implies at least one action is performed
                     adjacent_fluents = self.formula_mgr.mkAnd(not_f_step, f_stepplus1)
 
-                    # OR of all actions that change the value of that fluent (at least one)
+                    # OR of all actions that change the value of that fluent (at least one is performed)
                     for act in actions_adding[fluent]:
                         pos_performed_actions.append(self.formula_mgr.mkVar(self.action_variables[step][act]))
 
@@ -370,6 +361,7 @@ class Encoder():
                 if swap_pos2neg == 0:
                     # If fluent is true at step i is true also at step i+1
                     frame.append(self.formula_mgr.mkImply(f_step, f_stepplus1))
+
                 else:
                     # The fluent can be delete by at least one action
 
@@ -379,7 +371,7 @@ class Encoder():
                     # Value changes implies at least one action is performed
                     adjacent_fluents = self.formula_mgr.mkAnd(f_step, not_f_stepplus1)
 
-                    # OR of all actions that change the value of that fluent (at least one)
+                    # OR of all actions that change the value of that fluent
                     for act in actions_deliting[fluent]:
                         neg_performed_actions.append(self.formula_mgr.mkVar(self.action_variables[step][act]))
 
@@ -466,7 +458,7 @@ class Encoder():
         # Put the values of the dictionary in a list
         planning_list = [v for v in formula.values()]
 
-        # Build planning formula
+        # Build planning formula as the AND of all axioms
         return self.formula_mgr.mkAndArray(planning_list)
 
     def dump(self):

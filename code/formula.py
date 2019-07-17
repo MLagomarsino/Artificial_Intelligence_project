@@ -150,7 +150,6 @@ class FormulaMgr:
         else:
             return None
 
-    # Proc
     def mkOp(self, temp):
         nodeid = self.node2id.get(temp)
         if nodeid is not None:
@@ -195,7 +194,7 @@ class FormulaMgr:
         temp = Node(0, op=op, left=left_half, right=right_half)
         return self.mkOp(temp)
 
-    # List of variables from a list of literals
+    # List of variables (output_list) from a list of literals (input_list)
     def mkVarArray(self, input_list):
         assert (len(input_list) != 0)
 
@@ -350,33 +349,3 @@ class CnfConversion:
 
     def neg(self, id):
         return int(id * -1)
-
-    # Marta
-    def do_id2label(self, clauses, formula_mgr):
-        formula_clauses = list(list())
-        flag = 0
-        counter = 0
-
-        for cl in clauses:
-            clause = list()
-            number_lits = len(cl)
-
-            for lit in cl:
-
-                node = formula_mgr.getVarById(abs(lit))
-                if node.op is None:
-                    #flag = 1
-                    counter += 1
-                    # Check if negated or not
-                    neg = lit / abs(lit)
-                    if neg == 1:
-                        clause.append(node.label)
-                    else:
-                        clause.append(-node.label)
-            if counter == number_lits:
-            #if flag == 1:
-                formula_clauses.append(clause)
-                counter = 0
-                #flag = 0
-
-        return formula_clauses

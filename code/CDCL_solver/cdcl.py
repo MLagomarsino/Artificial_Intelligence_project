@@ -32,7 +32,7 @@ class Solver:
                 # The formula is satisfied: end of search
                 done = True
             elif formula.is_contradicted():
-                # The formula is contraticted: keep searching if possible, otherwise give up
+                # The formula is contradicted: keep searching if possible, otherwise give up
                 done = self.backtrack()
             else:
                 # We must choose a variable and assign it tentatively
@@ -108,7 +108,6 @@ class Solver:
             assignment.append(sr.var_index * value)
         return assignment
 
-    # ADDED
     def init_working_reason(self, formula):
         formula = self.formula
         wr = dict()
@@ -123,7 +122,6 @@ class Solver:
         self.trace("INIT working reason:", self.extract_lits_from_working_reason(wr))
         return wr
 
-    # ADDED
     def update_working_reason(self, wr, clause, formula):
         # Do not consider empty reasons (branches)
         if (clause == None):
@@ -149,7 +147,6 @@ class Solver:
         self.trace("NEW working reason:", self.extract_lits_from_working_reason(wr))
         return wr
 
-    # ADDED
     def extract_lits_from_working_reason(self, wr):
         lits = list()
         for var, sign in wr.items():

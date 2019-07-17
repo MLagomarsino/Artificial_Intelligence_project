@@ -7,7 +7,7 @@ from cdcl_solver.formula import Formula
 from cdcl_solver.cdcl import Solver
 from cdcl_solver.heuristics import RandomHeuristic, PureMomsHeuristic
 
-from formula import FormulaMgr, NnfConversion, CnfConversion
+from formula import NnfConversion, CnfConversion
 
 
 class Search():
@@ -27,6 +27,7 @@ class LinearSearch(Search):
         while True:
 
             final_formula = Formula()
+
             # Translate the plan in a propositional formula
             planning_formula = self.encoder.encode(self.horizon)
 
@@ -38,9 +39,9 @@ class LinearSearch(Search):
             formula_cnf = CnfConversion(self.encoder.formula_mgr)
             formula_cnf.do_conversion(formula_nnf)
 
+            # Fill the fields of class Formula()
             num_id = formula_cnf.clauses[0][0]
             final_formula.set_cnf(num_id, formula_cnf.clauses)
-            # self.encoder.inverse.__len__()*len(formula_cnf.clauses)
 
             # Solve the built formula using CDCL solver (Random Heuristic)
             h = RandomHeuristic()
@@ -51,6 +52,7 @@ class LinearSearch(Search):
             # Conversion from id to label
             sol = list()
             for lit in solution:
+                # Check if literal appears positive or negative
                 sign = lit/abs(lit)
                 node = self.encoder.formula_mgr.getVarById(abs(lit))
                 if node.op is None:
@@ -62,15 +64,13 @@ class LinearSearch(Search):
             if not sol:
                 # Increase horizon
                 self.horizon += 1
-                print("\nThe PLAN is not found!\n New horizon" + str(self.horizon))
+                print("\nThe PLAN is not found!\nNew horizon: " + str(self.horizon))
 
             else:
                 # A plan is found
-                print("\nThe PLAN is found!")
+                print("\nA PLAN is found, before validating:")
 
-                # Create a Plan object
-                #plan = Plan(sol, self.encoder)
-
+                # Create plan object
                 problem_plan = Plan(sol, self.encoder)
 
                 # Print plan

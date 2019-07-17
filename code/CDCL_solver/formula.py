@@ -79,11 +79,13 @@ class Formula:
         self.conflict_list = [Conflict() for _ in range(len(self.variable_list))]
         return
 
+    # Method to fill the fields of class Formula having the output of conversion to CNF
     def set_cnf(self, max_index, clauses):
         self.open_var = max_index
         # NOTICE: variable indexes start from 1, not from 0
         self.variable_list = [Variable() for x in range(max_index + 1)]
 
+        # Add clauses from the list passed as parameter
         for cl in clauses:
             self.add_clause(cl)
 

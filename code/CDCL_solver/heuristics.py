@@ -104,7 +104,6 @@ class PureMomsHeuristic:
             self.choose_at_random(formula, stack)
         return
 
-
 # ADDED Simple VSIDS heuristic
 class VsidsHeuristic:
 

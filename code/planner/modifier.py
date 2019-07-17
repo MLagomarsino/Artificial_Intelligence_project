@@ -1,9 +1,11 @@
 from itertools import combinations
 
+
 class Modifier():
 
     def do_encode(self):
         pass
+
 
 class LinearModifier(Modifier):
 
@@ -11,7 +13,6 @@ class LinearModifier(Modifier):
 
         # Mutual exclusion
         one_action = list()
-        #exor_actions = []
 
         # One action at each step
         for step in range(bound):
