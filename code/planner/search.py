@@ -3,9 +3,9 @@ from planner import encoder
 from planner.plan import Plan
 import utils
 
-from cdcl_solver.formula import Formula
-from cdcl_solver.cdcl import Solver
-from cdcl_solver.heuristics import RandomHeuristic, PureMomsHeuristic
+from CDCL_solver.formula import Formula
+from CDCL_solver.cdcl import Solver
+from CDCL_solver.heuristics import RandomHeuristic, PureMomsHeuristic
 
 from formula import NnfConversion, CnfConversion
 
