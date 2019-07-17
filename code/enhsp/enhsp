@@ -1,0 +1,3 @@
+#!/bin/bash 
+
+    java -classpath /Users/sergio/Desktop/Artificial-Intelligence-project/code/enhsp/src/:/Users/sergio/Desktop/Artificial-Intelligence-project/code/enhsp/libs/PPMaJal2.jar:/Users/sergio/Desktop/Artificial-Intelligence-project/code/enhsp/libs/* ENHSP "$@"

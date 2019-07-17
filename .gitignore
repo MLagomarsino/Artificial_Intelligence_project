@@ -108,8 +108,5 @@ venv.bak/
 .iml
 .xml
 .DS_Store
-domains/
-code/bin/
-code/enhsp/
 code/.DS_Store
 code/translate/.DS_Store
