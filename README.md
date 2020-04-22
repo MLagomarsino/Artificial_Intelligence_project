@@ -2,29 +2,39 @@
 ## Objective of the Project
 The aim of the project is the implementation (using Python 2.7 as interpreter) of a Planner for solving an Artificial Intelligence planning problem with SAT algorithms (**SAT based planner**).
 
-Given an instance specified by the initial and the goal states, as well as the actions that may be performed and a horizon length, the algorithm exploits the frame axioms and builds a Propositional Formula. If the latter is satisfiable, a SAT solver will find an assignment which would be translated into the desired plan to reach the objective. Otherwise the compiler will generate a new encoding reflecting a longer plan length.
+Given an instance specified by the initial and the goal states, as well as the actions that may be performed and a horizon length, the algorithm exploits the frame axioms and builds a Propositional Formula. The boolean formula is solved using  [Minisat](http://minisat.se/). If the latter is satisfiable, the [ENHSP](https://bitbucket.org/enricode/the-enhsp-planner/src/master/) will find an assignment which would be translated into the desired plan (a sequence of actions) to reach the objective. Otherwise a new encoding will be generated reflecting a longer plan length.
 
 ## How to run
-Add folder domain in the current folder
+Clone the repository:
+```bash
+git clone https://github.com/MLagomarsino/Artificial_Intelligence_project.git
 ```
-../Artificial_Intelligence_project/domains
+Install the required libraries and the Minisat solver:
+```bash
+cd ~/Artificial_Intelligence_project
+pip install -r z3
+pip install -r satispy
+sudo apt-get update
+sudo apt-get install minisat
 ```
-and bin and enhsp inside the folder code
+From the workspace folder, install and compile the ENHSP module with the following commands:
+```bash
+cd code/enhsp
+./install
+./compile
 ```
-../Artificial_Intelligence_project/code/bin
-../Artificial_Intelligence_project/code/enhsp
+Moreover in bin folder:
+```bash
+cd ..
+cd bin
+./validate
 ```
-Enter enhsp folder and perform the following commands:
-```./install``` and ```./compile```
-
-Moreover in bin folder: ```./validate```
-
 Run the project using **Python 2.7** as interpreter. 
 From terminal with command:
 ```
-plan.py [-h] [-domain DOMAIN] [-linear] [-parallel] [-pprint]
+plan.py [-h] [-domain <path_pddl_domain> <path_pddl_problem>] [-linear] [-parallel] [-pprint]
 ```
-Or  loading the following configuration in *PyCharm*:
+Or loading for example the following configuration in *PyCharm*:
 
 Script path: 
 ``` ../Artificial_Intelligence_project/code/plan.py ```
